@@ -59,10 +59,14 @@ try:
                     print("End of arrow: ",dist,", ", alpha)
                     print("Color: ",hsv[0,0,1:])
                     print("Difference to reference: ",similarity)
-                    d = cam_data[0]*cam_data[1] / (dist*10)
-                    print("Distance to arrow is: ",d," in cm")
                     print("AI precision: ",ai.predict_proba(data))
-                    
+
+                    d = cam_data[0]*cam_data[1] / (dist*10)
+                    dx_px = x_c - im.shape[1]/2
+                    dy_px = y_c - im.shape[0]/2
+                    print("Distance to arrow is: ",d," in cm")
+                    print("The horizontal distance from center of arrow to center of image is ",dx_px," pixel and the vertical distance is ",dy_px, "pixel.")
+
                     for j in range(len(points)):
                         cv2.line( im,(points[j,0,0],points[j,0,1]),(points[j,0,0],points[j,0,1]),(0,0,255),10)
                     
