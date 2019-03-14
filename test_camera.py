@@ -55,6 +55,8 @@ else:
             
                     if (ans == 1 ):
                         d = cam_data[0]*cam_data[1] / (dist*10)
+                        dx_px = x_c - WIDTH/2
+                        dy_px = y_c - HEIGHT/2
 
                         for j in range(len(points)):
                             cv2.line( frame,(points[j,0,0],points[j,0,1]),(points[j,0,0],points[j,0,1]),(0,0,255),10)
@@ -62,7 +64,7 @@ else:
                         cv2.drawContours( frame,con,i,(255,0,0),2)
                         cv2.line( frame,(x_c,y_c),(x_c,y_c),(255,255,0),20)
                         cv2.line( frame,(x_m,y_m),(x_m,y_m),(0,255,0),15)
-                        cv2.putText(frame, "{:.0f}".format(d)+" cm", (10,  frame.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
+                        cv2.putText(frame, "{:.0f}".format(d)+" cm "+"{:.0f}".format(dx_px)+" px "+"{:.0f}".format(dy_px)+" px", (10,  frame.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
                         break
                     
         cv2.imshow("Camera",frame)
