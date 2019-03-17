@@ -13,12 +13,13 @@ import numpy as np
 import _pickle
 import support_functions as sf
 
-WIDTH = 640
-HEIGHT = 480
+WIDTH = 1280
+HEIGHT = 960
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
 
-cv2.namedWindow("Camera",cv2.WINDOW_AUTOSIZE)
+cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Camera",960,1280)
 
 cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,WIDTH);
@@ -43,7 +44,8 @@ else:
                 ranges = sf.ranges_in_percentage(ranges,r_sum)
                 dist,alpha,x_m,y_m = sf.data_between_nearest(points,x_c,y_c)
     
-                if (dist > 25):
+#                if (dist > 25):
+                if (True):
                     angles, ranges = sf.sort_angles(angles,ranges,alpha)
                     hsv = sf.get_color_in_hsv(frame,con[i])
                     similarity = np.float(cv2.matchShapes(con[i],shape_ref,cv2.CONTOURS_MATCH_I2,0))
