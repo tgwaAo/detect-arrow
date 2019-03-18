@@ -10,7 +10,6 @@ Test searching of arrow pointing up.
 
 import cv2
 import numpy as np
-import skimage as sk
 import _pickle
 import support_functions as sf
 import argparse
@@ -79,11 +78,13 @@ try:
                 if (i == 33):
                     print("AI precision: ",ai.predict_proba(data))
 
-    
-    sk.io.imshow( im)
-    sk.io.show()
-    
+    cv2.namedWindow(filename, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(filename,960,1280)
+    cv2.imshow(filename,im)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    print("done")
+
 except:
     print("Something went wrong.")
     
-print("done")
