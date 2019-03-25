@@ -51,7 +51,7 @@ else:
                     similarity = np.float(cv2.matchShapes(con[i],shape_ref,cv2.CONTOURS_MATCH_I2,0))
                     
                     data = np.zeros((1,sf.NUM_FEATURES))
-                    data[0,:] = np.concatenate((angles,ranges,[dist],[alpha], hsv[0,0,1:],[similarity]))
+                    data[0,:] = np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity]))
 
                     ans = ai.predict(data)
             

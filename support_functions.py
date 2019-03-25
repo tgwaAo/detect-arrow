@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 import skimage as sk
 
-NUM_FEATURES = 15
+NUM_FEATURES = 14
 NUM_POINTS = 5
 
 def find_contours(pic):
@@ -139,7 +139,7 @@ def prepare_data(im,c,points,x_c,y_c,shape_ref):
     hsv = get_color_in_hsv(im,c)
     similarity = np.float(cv2.matchShapes(c,shape_ref,cv2.CONTOURS_MATCH_I2,0))
     
-    return np.concatenate((angles,ranges,[dist],[alpha], hsv[0,0,1:],[similarity]))
+    return np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity]))
 
 
 def get_color_in_hsv(im,c):
