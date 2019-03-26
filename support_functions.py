@@ -9,9 +9,8 @@ Function to support extraction and sorting of features of arrows.
 """
 import cv2
 import numpy as np
-import skimage as sk
 
-NUM_FEATURES = 14
+NUM_FEATURES = 15
 NUM_POINTS = 5
 
 def find_contours(pic):
@@ -40,16 +39,6 @@ def get_shape(c):
     
     return (points,x_c,y_c)
     
-def make_digital_ready(pic,angle):
-    im = sk.transform.rotate(pic,angle)
-    toint = im * 255
-    res = np.invert(toint.astype(np.uint8))
-    con = find_contours(res)
-    c = 0
-    points,x_c,y_c = get_shape(con[c])
-    
-    return (res,con[c],points,x_c,y_c)
-
 def distance_and_angle(dx,dy):
     r = np.sqrt(dy**2 + dx**2)
     alpha = np.angle((dx+dy*1j),deg = True)
@@ -131,17 +120,6 @@ def sort_angles(angles,ranges,start_angle):
     
     return (angles,ranges)
 
-def prepare_data(im,c,points,x_c,y_c,shape_ref):
-    ranges,angles,r_sum = get_ranges_and_angles(points,x_c,y_c)
-    ranges = ranges_in_percentage(ranges,r_sum)
-    dist,alpha,x_m,y_m = data_between_nearest(points,x_c,y_c)
-    angles, ranges = sort_angles(angles,ranges,alpha)
-    hsv = get_color_in_hsv(im,c)
-    similarity = np.float(cv2.matchShapes(c,shape_ref,cv2.CONTOURS_MATCH_I2,0))
-    
-    return np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity]))
-
-
 def get_color_in_hsv(im,c):
     mask = np.zeros(im.shape[:2],np.uint8)
     cv2.drawContours(mask,[c],0,255,-1)
@@ -149,4 +127,22 @@ def get_color_in_hsv(im,c):
     hsv = cv2.cvtColor(np.uint8([[color[:3]]]),cv2.COLOR_BGR2HSV)
     
     return hsv
-   
+
+def get_percentage_of_area(c):
+    area = cv2.contourArea(c)
+    rect = cv2.minAreaRect(c)
+    rect_size = rect[1][0] * rect[1][1]
+    per_con_rect = area/rect_size
+
+    return per_con_rect
+
+def prepare_data(im,c,points,x_c,y_c,shape_ref):
+    ranges,angles,r_sum = get_ranges_and_angles(points,x_c,y_c)
+    ranges = ranges_in_percentage(ranges,r_sum)
+    dist,alpha,x_m,y_m = data_between_nearest(points,x_c,y_c)
+    angles, ranges = sort_angles(angles,ranges,alpha)
+    hsv = get_color_in_hsv(im,c)
+    similarity = np.float(cv2.matchShapes(c,shape_ref,cv2.CONTOURS_MATCH_I2,0))
+    area = get_percentage_of_area(c)
+    
+    return np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity],[area]))
