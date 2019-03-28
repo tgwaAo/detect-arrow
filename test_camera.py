@@ -3,7 +3,7 @@
 """
 Created on Sun Mar 10 00:05:52 2019
 
-Test tracking of an arrow pointing up.
+Test tracking of an arrow.
 
 @author: me
 """
@@ -19,10 +19,20 @@ shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
 data = np.zeros((1,sf.NUM_FEATURES))
 
-#cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
-#cv2.resizeWindow("Camera",640,480)
+best_x_c = -1
+best_y_c = -1
+best_x_m = -1
+best_y_m = -1
+best_points = np.zeros((4,1,2))
+best_d = -1
+best_prob = -1
+best_i = -1
 
-cap = cv2.VideoCapture(1)
+# Change window size
+cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Camera",640,480)
+
+cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,WIDTH);
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT,HEIGHT);
 
@@ -36,6 +46,7 @@ else:
         ret, frame = cap.read()
         
         con = sf.find_contours(frame)
+        best_prob = -1
         
         for i in range(len(con)):
             points,x_c,y_c = sf.get_shape(con[i])
@@ -54,33 +65,42 @@ else:
                 ans = ai.predict(data)
         
                 if (ans == 1 ):
-                    
-                    d = cam_data[0]*cam_data[1] / (dist*10)
-                    dx_px = x_c - WIDTH/2
-                    dy_px = y_c - HEIGHT/2
-
                     prob = ai.predict_proba(data)
-
+                
                     if (prob[0][0] > prob[0][1]):
                         prob = prob[0][0]
                     else:
                         prob = prob[0][1]
+                    
+                    if (prob > best_prob):
+                        d = cam_data[0]*cam_data[1] / (dist*10)
+
+                        best_x_c = x_c
+                        best_y_c = y_c
+                        best_x_m = x_m
+                        best_y_m = y_m
+                        best_points = points
+                        best_d = d
+                        best_prob = prob
+                        best_i = i
                         
-                    for j in range(len(points)):
-                        cv2.line( frame,(points[j,0,0],points[j,0,1]),(points[j,0,0],points[j,0,1]),(0,0,255),10)
-                        
-                    cv2.drawContours( frame,con,i,(255,0,0),2)
-                    cv2.line( frame,(x_c,y_c),(x_c,y_c),(255,255,0),20)
-                    cv2.line( frame,(x_m,y_m),(x_m,y_m),(0,255,0),15)
-                    cv2.putText(frame, "{:.0f}".format(d)+" cm ", (10,  frame.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
-                    cv2.putText(frame, "{:.2f}".format(prob)+" probability", (200,  frame.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
-                    break
+        if (best_prob > 0):
+            for j in range(len(best_points)):
+                cv2.line(frame,(best_points[j,0,0],best_points[j,0,1]),(best_points[j,0,0],best_points[j,0,1]),(0,0,255),10)
+                
+            cv2.drawContours(frame,con,best_i,(255,0,0),2)
+            cv2.line(frame,(best_x_c,best_y_c),(best_x_c,best_y_c),(255,255,0),20)
+            cv2.line(frame,(best_x_m,best_y_m),(best_x_m,best_y_m),(0,255,0),15)
+            cv2.putText(frame, "{:.0f}".format(best_d)+" cm ", (10,  frame.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
+            cv2.putText(frame, "{:.2f}".format(best_prob)+" probability", (230,  frame.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
                     
         cv2.imshow("Camera",frame)
         
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        pressed_key = cv2.waitKey(1) & 0xFF
+        
+        if (pressed_key == ord("q")):
             break
-   
+            
     cap.release()
     cv2.destroyAllWindows()
     print("done")

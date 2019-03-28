@@ -3,7 +3,7 @@
 """
 Created on Sat Mar  9 23:41:22 2019
 
-Test searching of arrow pointing up.
+Test searching of arrow.
 
 @author: me
 """
@@ -16,6 +16,21 @@ import argparse
 
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
+
+best_x_c = -1
+best_y_c = -1
+best_x_m = -1
+best_y_m = -1
+best_points = np.zeros((4,1,2))
+best_d = -1
+best_prob = -1
+best_i = -1
+best_ranges = np.zeros(sf.NUM_POINTS)
+best_angles = np.zeros(sf.NUM_POINTS)
+best_alpha = -1
+best_hsv = np.zeros((1,1,3),dtype=np.uint8)
+best_sim = -1
+best_area = -1
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--image", required=True,
@@ -50,40 +65,55 @@ try:
             ans = ai.predict(data)
             
             if (ans == 1 ):
-                print("Contour nbr: ",i)
-                print()
-                print("Angles: ",angles)
-                print("Ranges: ",ranges)
-                print("End of arrow: ",dist,", ", alpha)
-                print("Color: ",hsv[0,0,1:])
-                print("Difference to reference: ",similarity)
+                
                 prob = ai.predict_proba(data)
-                print("AI precision: ",prob)
-                print("Contour area / rectangular area ",area )
-
+                
                 if (prob[0][0] > prob[0][1]):
                     prob = prob[0][0]
                 else:
                     prob = prob[0][1]
+                
+                if (prob > best_prob):
+                    d = cam_data[0]*cam_data[1] / (dist*10)
 
-                d = cam_data[0]*cam_data[1] / (dist*10)
-                dx_px = x_c - im.shape[1]/2
-                dy_px = y_c - im.shape[0]/2
-                print("Distance to arrow is: ",d," in cm")
-                print("The horizontal distance from center of arrow to center of image is ",dx_px," pixel and the vertical distance is ",dy_px, "pixel.")
+                    best_x_c = x_c
+                    best_y_c = y_c
+                    best_x_m = x_m
+                    best_y_m = y_m
+                    best_points = points
+                    best_d = d
+                    best_prob = prob
+                    best_i = i
+                    best_ranges = ranges
+                    best_angles = angles
+                    best_sim = similarity
+                    best_area = area
+
+    print("Contour nbr: ",best_i)
+    print()
+    print("AI precision: ",best_prob)
+    print("Angles: ",best_angles)
+    print("Ranges: ",best_ranges)
+    print("Color: ",best_hsv[0,0,1:])
+    print("Difference to reference: ",best_sim)
+    print("Contour area / rectangular area ",best_area )
+    print("Distance to arrow: ",best_d)
+    print("Angle of arrow: ", 180+best_alpha)
+    dx_px = x_c - im.shape[1]/2
+    dy_px = y_c - im.shape[0]/2
+    print("The horizontal distance from center of arrow to center of image is ",dx_px," pixel and the vertical distance is ",dy_px, "pixel.")
                 
-                for j in range(len(points)):
-                    cv2.line( im,(points[j,0,0],points[j,0,1]),(points[j,0,0],points[j,0,1]),(0,0,255),10)
-                
-                cv2.drawContours( im,con,i,(255,0,0),2)
-                cv2.line( im,(x_c,y_c),(x_c,y_c),(255,255,0),20)
-                cv2.putText( im, "{:.0f}".format(d)+" mm", (10,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
-                cv2.putText( im, "{:.2f}".format(prob)+" probability", (230,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 255, 0), 2)    
-                cv2.line( im,(x_m,y_m),(x_m,y_m),(0,255,0),15)       
-                break
+    if (best_prob > 0):
+        for j in range(len(best_points)):
+            cv2.line(im,(best_points[j,0,0],best_points[j,0,1]),(best_points[j,0,0],best_points[j,0,1]),(0,0,255),10)
+        
+        cv2.drawContours(im,con,best_i,(255,0,0),2)
+        cv2.line(im,(best_x_c,best_y_c),(best_x_c,best_y_c),(255,255,0),20)
+        cv2.line(im,(best_x_m,best_y_m),(best_x_m,best_y_m),(0,255,0),15)
+        cv2.putText(im, "{:.0f}".format(best_d)+" mm", (10,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
+        cv2.putText(im, "{:.2f}".format(best_prob)+" probability", (230,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
 
     cv2.namedWindow(filename, cv2.WINDOW_NORMAL)
-#    cv2.resizeWindow(filename,1280,960)
     cv2.imshow(filename,im)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

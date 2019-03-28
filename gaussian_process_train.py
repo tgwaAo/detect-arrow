@@ -3,7 +3,7 @@
 """
 Created on Sat Mar  9 23:06:27 2019
 
-Train ai with features an find bad training data.
+Train ai with features.
 
 @author: me
 """
@@ -16,8 +16,15 @@ from sklearn.model_selection import train_test_split
 
 features = np.load("sign_features.npy")
 target = np.load("sign_target.npy")
-num_one = np.count_nonzero(target)
 
+bad = np.load("false_features.npy")
+good = np.load("right_features.npy")
+
+bad = bad[np.random.choice(len(bad),len(good),replace=False),:]
+features = np.concatenate((features,bad,good), axis=0)
+target = np.concatenate((target,np.zeros(len(bad)),np.ones(len(good))))
+
+num_one = np.count_nonzero(target)
 print("Number of arrows ", num_one)
 print("Number of non arrows ",len(target)-num_one)
 
