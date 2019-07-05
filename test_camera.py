@@ -32,7 +32,7 @@ best_i = -1
 cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Camera",640,480)
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH,WIDTH);
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT,HEIGHT);
 
@@ -52,6 +52,7 @@ else:
             points,x_c,y_c = sf.get_shape(con[i])
 
             if (len(points) == sf.NUM_POINTS):
+                # extract infos of shape
                 ranges,angles,r_sum = sf.get_ranges_and_angles(points,x_c,y_c)
                 ranges = sf.ranges_in_percentage(ranges,r_sum)
                 dist,alpha,x_m,y_m = sf.data_between_nearest(points,x_c,y_c)
@@ -62,17 +63,12 @@ else:
                 
                 data[0,:] = np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity],[area]))
 
-                ans = ai.predict(data)
+                prob = ai.predict_proba(data)
+                proba = prob[0][1]
         
-                if (ans == 1 ):
-                    prob = ai.predict_proba(data)
-                
-                    if (prob[0][0] > prob[0][1]):
-                        prob = prob[0][0]
-                    else:
-                        prob = prob[0][1]
+                if (proba > 0.5):
                     
-                    if (prob > best_prob):
+                    if (proba > best_prob):
                         d = cam_data[0]*cam_data[1] / (dist*10)
 
                         best_x_c = x_c
@@ -81,7 +77,7 @@ else:
                         best_y_m = y_m
                         best_points = points
                         best_d = d
-                        best_prob = prob
+                        best_prob = proba
                         best_i = i
                         
         if (best_prob > 0):
@@ -98,7 +94,8 @@ else:
         
         pressed_key = cv2.waitKey(1) & 0xFF
         
-        if (pressed_key == ord("q")):
+        # press q or esc
+        if (pressed_key == ord("q") or pressed_key == 27):
             break
             
     cap.release()
