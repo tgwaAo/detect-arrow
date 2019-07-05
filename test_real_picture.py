@@ -62,32 +62,24 @@ try:
             
             data[0,:] = np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity],[area]))
     
-            ans = ai.predict(data)
-            
-            if (ans == 1 ):
-                
-                prob = ai.predict_proba(data)
-                
-                if (prob[0][0] > prob[0][1]):
-                    prob = prob[0][0]
-                else:
-                    prob = prob[0][1]
-                
-                if (prob > best_prob):
-                    d = cam_data[0]*cam_data[1] / (dist*10)
+            prob = ai.predict_proba(data)
+            proba = prob[0][1]
+        
+            if (proba > 0.5):
+                d = cam_data[0]*cam_data[1] / (dist*10)
 
-                    best_x_c = x_c
-                    best_y_c = y_c
-                    best_x_m = x_m
-                    best_y_m = y_m
-                    best_points = points
-                    best_d = d
-                    best_prob = prob
-                    best_i = i
-                    best_ranges = ranges
-                    best_angles = angles
-                    best_sim = similarity
-                    best_area = area
+                best_x_c = x_c
+                best_y_c = y_c
+                best_x_m = x_m
+                best_y_m = y_m
+                best_points = points
+                best_d = d
+                best_prob = proba
+                best_i = i
+                best_ranges = ranges
+                best_angles = angles
+                best_sim = similarity
+                best_area = area
 
     print("Contour nbr: ",best_i)
     print()
@@ -110,7 +102,7 @@ try:
         cv2.drawContours(im,con,best_i,(255,0,0),2)
         cv2.line(im,(best_x_c,best_y_c),(best_x_c,best_y_c),(255,255,0),20)
         cv2.line(im,(best_x_m,best_y_m),(best_x_m,best_y_m),(0,255,0),15)
-        cv2.putText(im, "{:.0f}".format(best_d)+" mm", (10,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
+        cv2.putText(im, "{:.0f}".format(best_d)+" cm", (10,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
         cv2.putText(im, "{:.2f}".format(best_prob)+" probability", (230,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
 
     cv2.namedWindow(filename, cv2.WINDOW_NORMAL)
