@@ -41,7 +41,6 @@ print("Number of non arrows ",len(target)-num_one)
 x_train, x_test, y_train, y_test = train_test_split(features,target,test_size=0.1)
 
 kernel = 1.0 * RBF(1.0)
-#gpc = GaussianProcessClassifier(kernel=kernel, random_state=0).fit(features, target)
 gpc = GaussianProcessClassifier(kernel=kernel, random_state=0).fit(x_train, y_train)
 
 score = gpc.score(x_train,y_train)
