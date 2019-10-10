@@ -17,21 +17,6 @@ import argparse
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
 
-best_x_c = -1
-best_y_c = -1
-best_x_m = -1
-best_y_m = -1
-best_points = np.zeros((4,1,2))
-best_d = -1
-best_prob = -1
-best_i = -1
-best_ranges = np.zeros(sf.NUM_POINTS)
-best_angles = np.zeros(sf.NUM_POINTS)
-best_alpha = -1
-best_hsv = np.zeros((1,1,3),dtype=np.uint8)
-best_sim = -1
-best_area = -1
-
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--image", required=True,
 	help="input file for searching")
@@ -80,6 +65,8 @@ try:
                 best_angles = angles
                 best_sim = similarity
                 best_area = area
+                best_hsv = hsv
+                best_alpha = alpha
 
     print("Contour nbr: ",best_i)
     print()

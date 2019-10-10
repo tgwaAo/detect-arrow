@@ -13,28 +13,15 @@ import numpy as np
 import _pickle
 import support_functions as sf
 
-WIDTH = 1280
-HEIGHT = 960
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
 data = np.zeros((1,sf.NUM_FEATURES))
-
-best_x_c = -1
-best_y_c = -1
-best_x_m = -1
-best_y_m = -1
-best_points = np.zeros((4,1,2))
-best_d = -1
-best_prob = -1
-best_i = -1
 
 # Change window size
 cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Camera",640,480)
 
 cap = cv2.VideoCapture(1)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH,WIDTH);
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT,HEIGHT);
 
 if (not cap.isOpened()):
     print("Camera not found.")
@@ -99,5 +86,6 @@ else:
             break
             
     cap.release()
-    cv2.destroyAllWindows()
-    print("done")
+    
+cv2.destroyAllWindows()
+print("done")
