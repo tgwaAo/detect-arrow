@@ -1,12 +1,12 @@
 # distance_measurement_camera
-Measure distance to an arrow with your camera
+Measure distance to an arrow with your camera.
 
-THIS PROJECT IS JUST A PROTOTYPE AND FAR FROM COMPLETE. PLEASE BE CAREFUL AND DO NOT BLINDLY TRUST THIS PROGRAM.
+THIS PROJECT IS JUST A PROTOTYPE AND FAR FROM COMPLETE. PLEASE BE CAREFUL WHEN YOU USE IT IN YOUR PROJECTS.
 
 This project was inspired by https://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/.
 
 I thought it would be funny to have an option to measure distance with a camera, because normally you can only track an angle of
-what you see, but with this global measurement your robot might get an idea where it could be.
+what you see, but with this global measurement your robot might get an idea where it could be and in which direction it should drive.
 
 Files:
 
