@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sat Mar  9 23:41:22 2019
+Published under GNU General Public License v3.0
 
-Test searching of arrow.
+You should have recieved a copy of the license GNU GPLv3. 
+If not, see 
+http://www.gnu.org/licenses/
+
+Search and measure from a picture.
 
 @author: me
 """
