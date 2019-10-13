@@ -15,11 +15,13 @@ Search and measure from a picture.
 import cv2
 import numpy as np
 import _pickle
-import support_functions as sf
+import extract_features as ef
 import argparse
 
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
+
+MIN_PROBABILITY = 0.6
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--image", required=True,
@@ -34,28 +36,28 @@ try:
         ai = _pickle.load(f)
     
     print(filename)
-    con = sf.find_contours(im)
-    data = np.zeros((1,sf.NUM_FEATURES))
+    con = ef.find_contours(im)
+    data = np.zeros((1,ef.NUM_FEATURES))
     best_prob = -1
     
     for i in range(len(con)):
-        points,x_c,y_c = sf.get_shape(con[i])
+        points,x_c,y_c = ef.get_shape(con[i])
         
-        if (len(points) == sf.NUM_POINTS):
-            ranges,angles,r_sum = sf.get_ranges_and_angles(points,x_c,y_c)
-            ranges = sf.ranges_in_percentage(ranges,r_sum)
-            dist,alpha,x_m,y_m = sf.data_between_nearest(points,x_c,y_c)
-            angles, ranges = sf.sort_angles(angles,ranges,alpha)
-            hsv = sf.get_color_in_hsv(im,con[i])
+        if (len(points) == ef.NUM_POINTS):
+            ranges,angles,r_sum = ef.get_ranges_and_angles(points,x_c,y_c)
+            ranges = ef.ranges_in_percentage(ranges,r_sum)
+            dist,alpha,x_m,y_m = ef.data_between_nearest(points,x_c,y_c)
+            angles, ranges = ef.sort_angles(angles,ranges,alpha)
+            hsv = ef.get_color_in_hsv(im,con[i])
             similarity = np.float(cv2.matchShapes(con[i],shape_ref,cv2.CONTOURS_MATCH_I2,0))
-            area = sf.get_percentage_of_area(con[i])
+            area = ef.get_percentage_of_area(con[i])
             
             data[0,:] = np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity],[area]))
     
             prob = ai.predict_proba(data)
             proba = prob[0][1]
         
-            if (proba > 0.5):
+            if (proba > MIN_PROBABILITY):
                 if (proba > best_prob):
                     d = cam_data[0]*cam_data[1] / (dist*10)
     

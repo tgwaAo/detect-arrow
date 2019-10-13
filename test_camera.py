@@ -15,13 +15,13 @@ Test tracking of an arrow.
 import cv2
 import numpy as np
 import _pickle
-import support_functions as sf
+import extract_features as ef
 
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
-data = np.zeros((1,sf.NUM_FEATURES))
+data = np.zeros((1,ef.NUM_FEATURES))
 
-MIN_PROBABILITY = 0.5
+MIN_PROBABILITY = 0.6
 
 # Change window size
 cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
@@ -38,21 +38,21 @@ else:
     while (True):
         ret, frame = cap.read()
         
-        con = sf.find_contours(frame)
+        con = ef.find_contours(frame)
         best_prob = -1
         
         for i in range(len(con)):
-            points,x_c,y_c = sf.get_shape(con[i])
+            points,x_c,y_c = ef.get_shape(con[i])
 
-            if (len(points) == sf.NUM_POINTS):
+            if (len(points) == ef.NUM_POINTS):
                 # extract infos of shape
-                ranges,angles,r_sum = sf.get_ranges_and_angles(points,x_c,y_c)
-                ranges = sf.ranges_in_percentage(ranges,r_sum)
-                dist,alpha,x_m,y_m = sf.data_between_nearest(points,x_c,y_c)
-                angles, ranges = sf.sort_angles(angles,ranges,alpha)
-                hsv = sf.get_color_in_hsv(frame,con[i])
+                ranges,angles,r_sum = ef.get_ranges_and_angles(points,x_c,y_c)
+                ranges = ef.ranges_in_percentage(ranges,r_sum)
+                dist,alpha,x_m,y_m = ef.data_between_nearest(points,x_c,y_c)
+                angles, ranges = ef.sort_angles(angles,ranges,alpha)
+                hsv = ef.get_color_in_hsv(frame,con[i])
                 similarity = np.float(cv2.matchShapes(con[i],shape_ref,cv2.CONTOURS_MATCH_I2,0))
-                area = sf.get_percentage_of_area(con[i])
+                area = ef.get_percentage_of_area(con[i])
                 
                 data[0,:] = np.concatenate((angles,ranges,[dist], hsv[0,0,1:],[similarity],[area]))
 
