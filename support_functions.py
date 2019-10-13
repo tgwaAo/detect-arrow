@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Feb 28 22:44:27 2019
+Published under GNU General Public License v3.0
+
+You should have recieved a copy of the license GNU GPLv3. 
+If not, see 
+http://www.gnu.org/licenses/
 
 Function to support extraction and sorting of features of arrows.
 
