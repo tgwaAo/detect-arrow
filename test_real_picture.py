@@ -36,7 +36,8 @@ try:
     print(filename)
     con = sf.find_contours(im)
     data = np.zeros((1,sf.NUM_FEATURES))
-
+    best_prob = -1
+    
     for i in range(len(con)):
         points,x_c,y_c = sf.get_shape(con[i])
         
@@ -55,22 +56,23 @@ try:
             proba = prob[0][1]
         
             if (proba > 0.5):
-                d = cam_data[0]*cam_data[1] / (dist*10)
-
-                best_x_c = x_c
-                best_y_c = y_c
-                best_x_m = x_m
-                best_y_m = y_m
-                best_points = points
-                best_d = d
-                best_prob = proba
-                best_i = i
-                best_ranges = ranges
-                best_angles = angles
-                best_sim = similarity
-                best_area = area
-                best_hsv = hsv
-                best_alpha = alpha
+                if (proba > best_prob):
+                    d = cam_data[0]*cam_data[1] / (dist*10)
+    
+                    best_x_c = x_c
+                    best_y_c = y_c
+                    best_x_m = x_m
+                    best_y_m = y_m
+                    best_points = points
+                    best_d = d
+                    best_prob = proba
+                    best_i = i
+                    best_ranges = ranges
+                    best_angles = angles
+                    best_sim = similarity
+                    best_area = area
+                    best_hsv = hsv
+                    best_alpha = alpha
 
     print("Contour nbr: ",best_i)
     print()
