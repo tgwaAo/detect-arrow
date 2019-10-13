@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Sun Mar 10 00:05:52 2019
+Published under GNU General Public License v3.0
+
+You should have recieved a copy of the license GNU GPLv3. 
+If not, see 
+http://www.gnu.org/licenses/
 
 Test tracking of an arrow.
 
@@ -16,6 +20,8 @@ import support_functions as sf
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
 data = np.zeros((1,sf.NUM_FEATURES))
+
+MIN_PROBABILITY = 0.5
 
 # Change window size
 cv2.namedWindow("Camera",cv2.WINDOW_NORMAL)
@@ -53,7 +59,7 @@ else:
                 prob = ai.predict_proba(data)
                 proba = prob[0][1]
         
-                if (proba > 0.5):
+                if (proba >= MIN_PROBABILITY):
                     
                     if (proba > best_prob):
                         d = cam_data[0]*cam_data[1] / (dist*10)
@@ -67,7 +73,7 @@ else:
                         best_prob = proba
                         best_i = i
                         
-        if (best_prob > 0):
+        if (best_prob >= MIN_PROBABILITY):
             for j in range(len(best_points)):
                 cv2.line(frame,(best_points[j,0,0],best_points[j,0,1]),(best_points[j,0,0],best_points[j,0,1]),(0,0,255),10)
                 
