@@ -357,7 +357,17 @@ def prepare_data(im,c,points,x_c,y_c,shape_ref):
     -------
     Array
         Array containing the prepared data to check being the searched 
-        symbol or not.
+        symbol or not. It contains angles, ranges, a distance, saturation and 
+        value, a simlarity and percentage of an area.
+        Angles are measured from the middle of the closest points to each 
+        point. Vertex is the middle of the shape.
+        The ranges are in percent in respect to the original sum of them.
+        The distance is calculated between the middle of the two closest points
+        and the center of the contour.
+        The saturation and value are mean values in found contour.
+        The similarity is calculated as distance of Hu Moments.
+        Calculate the percentage of the contour compared to its rectangular
+        area.
         
     """
     ranges,angles,r_sum = get_ranges_and_angles(points,x_c,y_c)
