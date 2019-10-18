@@ -1,12 +1,12 @@
 # distance_measurement_camera
 Measure distance to an arrow with your camera.
 
-THIS PROJECT IS JUST A PROTOTYPE AND FAR FROM COMPLETE. PLEASE BE CAREFUL WHEN YOU USE IT IN YOUR PROJECTS.
+THIS PROJECT IS JUST A PROTOTYPE AND FAR FROM COMPLETE. THERE IS NO WARANTY FOR A FUNCTION WITHOUT FAILURES.
 
-This project was inspired by https://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/.
+The project allows the user to detect the given arrow. This arrow can be printed and sticked on a wall. In this prototype, the arrow gets detected via its contours and data like the position in the image, the distance to the camera and pointing direction can be used.
 
-I thought it would be funny to have an option to measure distance with a camera, because normally you can only track an angle of
-what you see, but with this global measurement your robot might get an idea where it could be and in which direction it should drive.
+The distance is measured as described in https://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/.
+
 
 Files:
 
@@ -16,8 +16,8 @@ The file named "sign_ai.pkl" contains a trained gaussian progress classifier, so
 In "cam_data.txt" the length between the "start" (not the peak) and the center of the arrow is the first number and the second is the focal length in pixels, so you
 should adjust the second value for EVERY RESOLUTION. Both values are multiplicated with each other, so the order is not important.
 The file "shape_reference.npy" contains a shape to compare it with found shapes.
-"gaussian_process_train.py" loads features and targets and saves ai as "sign_ai.pkl".
-"support_functions.py" is as it says, a collection of functions.
+"train_arrows.py" loads features and targets and saves ai as "sign_ai.pkl".
+"extract_features.py" extracts features to use them for comparison in ai.
 "test_real_picture.py" is a file for testing with a local file.
 "test_camera.py" is a file to test searching and measurement with your camera.
 
@@ -29,7 +29,7 @@ You can simply start testing with
 
 python3 test_real_picture.py -i 50_cm.jpg
 
-If you want to build the ai yourself, you can just start "gaussian_process_train.py".
+If you want to build the ai yourself, you can just start "train_arrows.py".
 
 To use your own camera, change the second value of "cam_data.txt" to the focal length of your camera in pixels and start "test_camera.py"
 
