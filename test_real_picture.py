@@ -18,23 +18,38 @@ import _pickle
 import extract_features as ef
 import argparse
 
+#########################################################
+# Load data.
+#########################################################
 shape_ref = np.load("shape_reference.npy")
 cam_data = np.loadtxt("cam_data.txt")
 
 MIN_PROBABILITY = 0.6
 
+#########################################################
+# Add argparser to handle user argument.
+#########################################################
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--image", required=True,
 	help="input file for searching")
 
 try:
+    #######################################################
+    # Load file and ai (gaussian process classifier).
+    #######################################################
     args = vars(ap.parse_args())
     filename = args["image"]
     im = cv2.imread(filename)
     
+    if im is None:
+        raise FileNotFoundError("Image not found")
+        
     with open("sign_ai.pkl","rb") as f:
         ai = _pickle.load(f)
     
+    ######################################################################
+    # Extract contours and search for the right contour.
+    ######################################################################
     print(filename)
     con = ef.find_contours(im)
     data = np.zeros((1,ef.NUM_FEATURES))
@@ -76,21 +91,24 @@ try:
                     best_hsv = hsv
                     best_alpha = alpha
 
-    print("Contour nbr: ",best_i)
-    print()
-    print("AI precision: ",best_prob)
-    print("Angles: ",best_angles)
-    print("Ranges: ",best_ranges)
-    print("Color: ",best_hsv[0,0,1:])
-    print("Difference to reference: ",best_sim)
-    print("Contour area / rectangular area ",best_area )
-    print("Distance to arrow: ",best_d)
-    print("Angle of arrow: ", 180+best_alpha)
-    dx_px = x_c - im.shape[1]/2
-    dy_px = y_c - im.shape[0]/2
-    print("The horizontal distance from center of arrow to center of image is ",dx_px," pixel and the vertical distance is ",dy_px, "pixel.")
-                
+    ################################################################
+    # Print data of found contour and visualize result.
+    ################################################################
     if (best_prob > 0):
+        print("Contour nbr: ",best_i)
+        print()
+        print("AI precision: ",best_prob)
+        print("Angles: ",best_angles)
+        print("Ranges: ",best_ranges)
+        print("Color: ",best_hsv[0,0,1:])
+        print("Difference to reference: ",best_sim)
+        print("Contour area / rectangular area ",best_area )
+        print("Distance to arrow: ",best_d)
+        print("Angle of arrow: ", 180+best_alpha)
+        dx_px = x_c - im.shape[1]/2
+        dy_px = y_c - im.shape[0]/2
+        print("The horizontal distance from center of arrow to center of image is ",dx_px," pixel and the vertical distance is ",dy_px, "pixel.")
+                
         for j in range(len(best_points)):
             cv2.line(im,(best_points[j,0,0],best_points[j,0,1]),(best_points[j,0,0],best_points[j,0,1]),(0,0,255),10)
         
@@ -100,12 +118,28 @@ try:
         cv2.putText(im, "{:.0f}".format(best_d)+" cm", (10,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
         cv2.putText(im, "{:.2f}".format(best_prob)+" probability", (230,  im.shape[0]-10), cv2.FONT_HERSHEY_SIMPLEX,1.5,(255, 0, 0), 5)    
 
+    else:
+        print("No arrow found.")
+        
     cv2.namedWindow(filename, cv2.WINDOW_NORMAL)
     cv2.imshow(filename,im)
-    cv2.waitKey(0)
+    
+    # This for people, who just close the window.
+    while True:
+        if cv2.getWindowProperty(filename, cv2.WND_PROP_VISIBLE):
+            if cv2.waitKey(100) != -1: # Any key pressed.
+                break
+        else:
+            break
+    
     cv2.destroyAllWindows()
     print("done")
 
+except FileNotFoundError as err:
+    print(err.args)
+
+except KeyboardInterrupt:
+    print("Aborted")    
+    
 except:
     print("Something went wrong.")
-    
