@@ -18,7 +18,7 @@ should adjust the second value for EVERY RESOLUTION. Both values are multiplicat
 The file "shape_reference.npy" contains a shape to compare it with found shapes.
 "train_arrows.py" loads features and targets and saves ai as "sign_ai.pkl".
 "extract_features.py" extracts features to use them for comparison in ai.
-"test_real_picture.py" is a file for testing with a local file.
+"test_picture.py" is a file for testing with a local file.
 "test_camera.py" is a file to test searching and measurement with your camera.
 
 USAGE:
@@ -27,7 +27,7 @@ Adjust the second parameter in "cam_data.txt" to your camera. The first is 126.5
 
 You can simply start testing with 
 
-python3 test_real_picture.py -i 50_cm.jpg
+python3 test_picture.py -i 50_cm.jpg
 
 If you want to build the ai yourself, you can just start "train_arrows.py".
 
