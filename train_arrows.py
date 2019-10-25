@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Published under GNU General Public License v3.0
+Published under GNU General Public License v3.0.
 
 You should have recieved a copy of the license GNU GPLv3.
 If not, see
