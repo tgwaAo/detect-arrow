@@ -9,7 +9,7 @@ The distance is measured as described in https://www.pyimagesearch.com/2015/01/1
 
 USAGE:
 
-Adjust the second parameter in "cam_data.txt" to your camera. The first is 126.5 and should not be changed. The second has a value of 730 for my example picture. Please recognize that your paper could be rotated, which results in a different distance.
+Adjust the second parameter in "cam_data.txt" to your camera. The first is 126.5 and should not be changed. The second has a value of 760 for my example picture. Please recognize that your paper could be rotated, which results in a different distance.
 
 You can simply start testing with 
 
@@ -25,7 +25,7 @@ The "arrow_print.jpg" is the file to be printed. The arrow is the object, that g
 "sign_features.npy" is the file of the features to be trained and "sign_target.npy" is the file of targets.
 The file named "sign_ai.pkl" contains a trained gaussian progress classifier, so you do not have to train it for yourself.
 In "cam_data.txt" the length between the "start" (not the peak) and the center of the arrow is the first number and the second is the focal length in pixels, so you
-should adjust the second value for EVERY RESOLUTION. Both values are multiplicated with each other, so the order is not important.
+should adjust the second value for EVERY RESOLUTION and lense. Both values are multiplicated with each other, so the order is not important.
 The file "shape_reference.npy" contains a shape to compare it with found shapes.
 "train_arrows.py" loads features and targets and saves ai as "sign_ai.pkl".
 "extract_features.py" extracts features to use them for comparison in ai.
