@@ -7,6 +7,17 @@ The project allows the user to detect the given arrow. This arrow can be printed
 
 The distance is measured as described in https://www.pyimagesearch.com/2015/01/19/find-distance-camera-objectmarker-using-python-opencv/.
 
+USAGE:
+
+Adjust the second parameter in "cam_data.txt" to your camera. The first is 126.5 and should not be changed. The second has a value of 730 for my example picture. Please recognize that your paper could be rotated, which results in a different distance.
+
+You can simply start testing with 
+
+python3 test_picture.py -i ../50_cm.jpg
+
+If you want to build the ai yourself, you can just start "train_arrows.py".
+
+To use your own camera, change the second value of "cam_data.txt" to the focal length of your camera in pixels and start "test_camera.py"
 
 Files:
 
@@ -20,18 +31,4 @@ The file "shape_reference.npy" contains a shape to compare it with found shapes.
 "extract_features.py" extracts features to use them for comparison in ai.
 "test_picture.py" is a file for testing with a local file.
 "test_camera.py" is a file to test searching and measurement with your camera.
-
-USAGE:
-
-Adjust the second parameter in "cam_data.txt" to your camera. The first is 126.5 and should not be changed. The second has a value of 730 for my example picture and the value for 1280 * 960 is around 1117. Please recognize that your paper could be rotated, which results in a different distance.
-
-You can simply start testing with 
-
-python3 test_picture.py -i 50_cm.jpg
-
-If you want to build the ai yourself, you can just start "train_arrows.py".
-
-To use your own camera, change the second value of "cam_data.txt" to the focal length of your camera in pixels and start "test_camera.py"
-
-
 
