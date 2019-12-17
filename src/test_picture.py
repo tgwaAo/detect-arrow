@@ -69,7 +69,7 @@ try:
             area = ef.get_percentage_of_area(con[i])
 
             data[0, :] = np.concatenate((angles, ranges, hsv[0, 0, 1:],
-                                        [similarity], [area]))
+                                         [similarity], [area]))
 
             # Use this line, if you just want to create a usable dataset.
             # data[0, :] = ef.prepare_data(im, con[i], points, x_c, y_c,
@@ -127,11 +127,11 @@ try:
                  20)
         cv2.line(im, (best_x_m, best_y_m), (best_x_m, best_y_m), (0, 255, 0),
                  15)
-        cv2.putText(im, "{:.0f}".format(best_d) + " cm", (10,
-                    im.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
+        cv2.putText(im, "{:.0f}".format(best_d) + " cm",
+                    (10, im.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
                     (255, 0, 0), 3)
-        cv2.putText(im, "{:.2f}".format(best_prob) + " probability", (230,
-                    im.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
+        cv2.putText(im, "{:.2f}".format(best_prob) + " probability",
+                    (230, im.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.5,
                     (255, 0, 0), 3)
 
     else:
