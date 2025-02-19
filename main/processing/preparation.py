@@ -30,6 +30,7 @@ from utils import extract_cnts
 from utils import filter_cnts
 from utils import sort_cnts
 from utils import filter_and_extract_img_from_cnt
+from model_handler import ModelHandler
 
 
 class Preparation:
@@ -91,9 +92,12 @@ class Preparation:
         if self.model is not None and ignore_when_model_exists:
             return False
 
-        try:
-            self.model = load_model(model_path)
-        except Exception:
+        m_handler = ModelHandler()
+        ret = m_handler.load_model()
+        if ret:
+            self.model = m_handler.get_model()
+            m_handler.unref_model()
+        else:
             return False
 
         self.model.trainable = False

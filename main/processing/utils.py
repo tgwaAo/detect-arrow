@@ -18,6 +18,7 @@ from datetime import timezone
 def get_current_time_string():
     return datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S-%f')
 
+
 def filter_and_extract_img_from_cnt(
     gray_img,
     con,
