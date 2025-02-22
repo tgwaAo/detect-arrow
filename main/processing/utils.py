@@ -53,44 +53,6 @@ def filter_and_extract_norm_img_from_cnt(gray_img, con):
     return None
 
 
-def rotate_and_crop_min_rect(image, min_rect, factor: float = 1.3):
-    box = cv2.boxPoints(min_rect)
-    box = np.intp(box)
-
-    width = round(min_rect[1][0])
-    height = round(min_rect[1][1])
-
-    size_of_transformed_image = max(min_rect[1])
-    min_needed_height = int(np.sqrt(2 * np.power(size_of_transformed_image, 2)))
-    width_to_height = min_rect[1][0] / min_rect[1][1]
-
-    if width_to_height >= 1:
-        angle = -1 * (90 - min_rect[2])
-    else:
-        angle = min_rect[2]
-
-    size = (min_needed_height, min_needed_height)
-
-    x_coordinates_of_box = box[:,0]
-    y_coordinates_of_box = box[:,1]
-    x_min = min(x_coordinates_of_box)
-    x_max = max(x_coordinates_of_box)
-    y_min = min(y_coordinates_of_box)
-    y_max = max(y_coordinates_of_box)
-
-    center = (int((x_min+x_max)/2), int((y_min+y_max)/2))
-    cropped = cv2.getRectSubPix(image, size, center)
-    M = cv2.getRotationMatrix2D((size[0]/2, size[1]/2), angle, 1.0)
-    cropped = cv2.warpAffine(cropped, M, size)
-
-    if width_to_height >= 1:
-        cropped_rotated = cv2.getRectSubPix(cropped, (int(factor * height), int(factor * width)), (size[0]/2, size[1]/2))
-    else:
-        cropped_rotated = cv2.getRectSubPix(cropped, (int(factor * width), int(factor * height)), (size[0]/2, size[1]/2))
-
-    return cropped_rotated
-
-
 def extract_cnts(img, sigma=0.33):
     v = np.median(img)
     # ---- apply automatic Canny edge detection using the computed median----
@@ -154,10 +116,7 @@ def rotate_and_crop(image, min_area_rect, factor=1.3, cnt=None):
 
     width_to_height = min_area_rect[1][0] / min_area_rect[1][1]
 
-    if width_to_height >= 1:
-        min_rect_angle_deg = -1 * (90 - min_area_rect[2])
-    else:
-        min_rect_angle_deg = min_area_rect[2]
+    min_rect_angle_deg = get_rotation(min_area_rect[2], width_to_height)
 
     size = (min_needed_height, min_needed_height)
 
@@ -192,7 +151,18 @@ def rotate_and_crop(image, min_area_rect, factor=1.3, cnt=None):
             pt_y = dist * np.sin(angle_rad)
             rot_pts[idx] = pt_x, pt_y
 
+    else:
+        rot_pts = None
+
     return cropped_rotated, rot_pts
+
+
+def get_rotation(min_area_angle, width_to_height):
+    if width_to_height >= 1:
+        min_rect_angle_deg = -1 * (90 - min_area_angle)
+    else:
+        min_rect_angle_deg = min_area_rect[2]
+    return min_rect_angle_deg
 
 
 def sort_cnts(prediction, pos_filtered_to_pos_source, cnts):
@@ -244,3 +214,136 @@ def filter_cnts(cnts, gray_img=None):
 
     small_imgs = np.array(small_imgs)
     return small_imgs, filtered_cnts, hull_rot_pts
+
+
+def more_pts_up(pts, center=None):
+    if center is not None:
+        y_max = center[1]
+    else:
+        y_max = 0
+
+    pts_up = 0
+    pts_down = 0
+
+    for x, y in pts:
+        if y < y_max:
+            pts_up += 1
+        else:
+            pts_down += 1
+
+    return pts_down < pts_up
+
+
+def angle_x_axis(pt):
+    angle_rad = np.arctan2(pt[0], pt[1])
+    if angle_rad < 0:
+        angle_rad += 2 * np.pi
+    return angle_rad
+
+
+def get_max_dist_reference(pts, ref_up):
+    max_dist = 0
+    min_idx = -1
+    for idx, pt in enumerate(pts):
+        dist = np.power(pt[0], 2) + np.power(pt[1], 2)
+        if max_dist < dist:
+            if ref_up and pt[1] < 0:  # up is lower
+                min_idx = idx
+                max_dist = dist
+            elif not ref_up and 0 < pt[1]:
+                min_idx = idx
+                max_dist = dist
+
+    if min_idx == -1:
+        return None
+    return pts[min_idx]
+
+
+def rot_centered_pts(pts, ref_angle_rad):
+    rot_pts = np.zeros((len(pts), 2))
+    for idx, pt in enumerate(pts):
+        angle_rad = np.arctan2(pt[1], pt[0]) + ref_angle_rad
+        dist = np.hypot(pt[0], pt[1])
+        pt_x = dist * np.cos(angle_rad)
+        pt_y = dist * np.sin(angle_rad)
+        rot_pts[idx] = pt_x, pt_y
+
+    return rot_pts
+
+
+def sort_pts_by_angles(rot_pts, org_pts):
+    angles_rad = [angle_x_axis(pt) for pt in rot_pts]
+    idx_sorted = np.argsort(angles_rad)
+    return org_pts[idx_sorted]
+
+
+def sort_pt_biggest_dist_center(pts, ref_up, org_pts):
+    closest_y = get_max_dist_reference(pts, ref_up)
+    ref_angle_rad = (np.pi / 2) - np.arctan2(closest_y[1], closest_y[0])
+    rot_pts = rot_centered_pts(pts, ref_angle_rad)
+    return sort_pts_by_angles(rot_pts, org_pts)
+
+
+def calc_rot_and_trans(H, K):
+    H = H.T
+    h1 = H[0]
+    h2 = H[1]
+    h3 = H[2]
+    K_inv = np.linalg.inv(K)
+    L = 1 / np.linalg.norm(np.dot(K_inv, h1))
+    r1 = L * np.dot(K_inv, h1)
+    r2 = L * np.dot(K_inv, h2)
+    r3 = np.cross(r1, r2)
+
+    T = L * np.dot(K_inv, h3)
+    # print(T)
+
+    R = np.array([[r1], [r2], [r3]])
+    R = np.reshape(R, (3, 3))
+    U, S, V = np.linalg.svd(R, full_matrices=True)
+    U = np.matrix(U)
+    V = np.matrix(V)
+    R = U * V
+
+    alpha = np.rad2deg(np.arctan2(R[2, 1], R[2, 2]))
+    beta = np.rad2deg(np.arctan2(-R[2, 0], np.sqrt(R[2, 1] * R[2, 1] + R[2, 2] * R[2, 2])))
+    gamma = np.rad2deg((np.arctan2(R[1, 0], R[0, 0])))
+    return np.array((alpha, beta, gamma)), T
+
+
+def est_pos_in_img(img, model, points_printed):
+    if img is None:
+        raise IOError('file not valid')
+
+    cnts, gray_img = extract_cnts(img)
+    filtered_list, pos_filtered_to_pos_source, hull_rot_pts = filter_cnts(cnts, gray_img)
+
+    if not len(filtered_list):
+        print('no candidate for prediction found')
+        return None
+
+    prediction = model.predict(filtered_list, verbose=0)
+
+    pos_cnts, neg_cnts = sort_cnts(prediction, pos_filtered_to_pos_source, cnts, filtered_list)
+
+    if not len(pos_cnts):
+        return None
+
+    img_points = extract_feature_pts(pos_cnts[0])
+    img_points = merge_points(img_points)
+    if len(img_points) != 5:
+        return None
+
+    img_points = np.reshape(img_points, (5, 2))
+    idx = np.argwhere(prediction >= 0.5)[0][0]
+    rot_points = hull_rot_pts[idx]
+
+    ref_up = more_pts_up(rot_points)
+    img_points = sort_pt_biggest_dist_center(rot_points, ref_up, img_points)
+
+    H, mask = cv2.findHomography(points_printed, img_points, cv2.RANSAC)
+    R, T = calc_rot_and_trans(H, K)
+    return R, T, pos_cnts, neg_cnts
+
+
+
