@@ -5,12 +5,12 @@ import cv2
 
 import numpy.typing as npt
 
-from main.conf.img_consts import MIN_WIDTH_TO_HEIGHT
-from main.conf.img_consts import MAX_WIDTH_TO_HEIGHT
-from main.conf.img_consts import AREA_BORDER
-from main.conf.img_consts import TARGET_SIZE
-from main.conf.img_consts import COMPARED_SIZE
-from main.conf.img_consts import BLUR_KERNEL
+from main.conf.imgs import MIN_WIDTH_TO_HEIGHT
+from main.conf.imgs import MAX_WIDTH_TO_HEIGHT
+from main.conf.imgs import AREA_BORDER
+from main.conf.imgs import TARGET_SIZE
+from main.conf.imgs import COMPARED_SIZE
+from main.conf.imgs import BLUR_KERNEL
 from datetime import datetime
 from datetime import timezone
 
@@ -37,7 +37,7 @@ def filter_and_extract_img_from_cnt(
     width_to_height = low_value / high_value
 
     if MIN_WIDTH_TO_HEIGHT < width_to_height < MAX_WIDTH_TO_HEIGHT or not w_h_filter:
-        cropped_img = rotate_and_crop_min_rect(gray_img, min_rect)
+        cropped_img, _ = rotate_and_crop(gray_img, min_rect)
         small_img = cv2.resize(cropped_img, TARGET_SIZE)
         return small_img
 
@@ -104,7 +104,12 @@ def merge_points(points, max_merge_dist=4):
     return filtered_points
 
 
-def rotate_and_crop(image, min_area_rect, factor=1.3, cnt=None):
+def rotate_and_crop(
+        image,
+        min_area_rect,
+        factor=1.3,
+        cnt=None
+) -> tuple[npt.NDArray[np.uint8], list[tuple[float,float]]]:
     box = cv2.boxPoints(min_area_rect)
     box = np.intp(box)
 
@@ -161,16 +166,19 @@ def get_rotation(min_area_angle, width_to_height):
     if width_to_height >= 1:
         min_rect_angle_deg = -1 * (90 - min_area_angle)
     else:
-        min_rect_angle_deg = min_area_rect[2]
+        min_rect_angle_deg = min_area_angle
     return min_rect_angle_deg
 
 
-def sort_cnts(prediction, pos_filtered_to_pos_source, cnts):
+def sort_cnts(prediction, cnts, hull_rot_pts):
     mask = np.zeros(len(cnts), dtype=bool)
     mask[np.where(prediction >= 0.5)[0]] = True
     positive_contours = cnts[mask]
     negative_contours = cnts[~mask]
-    return positive_contours, negative_contours
+    pos_prediction = prediction[0][mask]
+    neg_prediction = prediction[0][~mask]
+    hull_rot_pts = hull_rot_pts[mask]
+    return positive_contours, negative_contours, pos_prediction, neg_prediction, hull_rot_pts
 
 
 def filter_cnts(cnts, gray_img=None):
@@ -213,6 +221,7 @@ def filter_cnts(cnts, gray_img=None):
                 small_imgs.append(small_img)
 
     small_imgs = np.array(small_imgs)
+    hull_rot_pts = np.array(hull_rot_pts)
     return small_imgs, filtered_cnts, hull_rot_pts
 
 
@@ -311,39 +320,74 @@ def calc_rot_and_trans(H, K):
     return np.array((alpha, beta, gamma)), T
 
 
-def est_pos_in_img(img, model, points_printed):
-    if img is None:
-        raise IOError('file not valid')
+def est_cnts_in_img(
+    gray_img,
+    model,
+    verbose: bool = False
+) -> tuple[npt.NDArray[int], npt.NDArray[int], npt.NDArray[float], npt.NDArray[float], npt.NDArray[int]]:
+    cnts, gray_img = extract_cnts(gray_img)
+    filtered_images, cnts, hull_rot_pts = filter_cnts(cnts, gray_img)
 
-    cnts, gray_img = extract_cnts(img)
-    filtered_list, pos_filtered_to_pos_source, hull_rot_pts = filter_cnts(cnts, gray_img)
-
-    if not len(filtered_list):
-        print('no candidate for prediction found')
+    if not len(filtered_images):
+        if verbose:
+            print('no candidate for prediction found')
         return None
 
-    prediction = model.predict(filtered_list, verbose=0)
+    prediction = model(filtered_images, verbose=0)
 
-    pos_cnts, neg_cnts = sort_cnts(prediction, pos_filtered_to_pos_source, cnts, filtered_list)
+    return sort_cnts(prediction, cnts, hull_rot_pts)
 
-    if not len(pos_cnts):
+
+def est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, verbose):
+    hull_points = extract_feature_pts(best_cnt)
+    hull_points = merge_points(hull_points)
+    if len(hull_points) != 5:
+        if verbose:
+            print(f'not enough hull points, got {len(hull_points)} need 5')
         return None
-
-    img_points = extract_feature_pts(pos_cnts[0])
-    img_points = merge_points(img_points)
-    if len(img_points) != 5:
-        return None
-
-    img_points = np.reshape(img_points, (5, 2))
-    idx = np.argwhere(prediction >= 0.5)[0][0]
-    rot_points = hull_rot_pts[idx]
-
-    ref_up = more_pts_up(rot_points)
-    img_points = sort_pt_biggest_dist_center(rot_points, ref_up, img_points)
-
-    H, mask = cv2.findHomography(points_printed, img_points, cv2.RANSAC)
+    hull_points = np.reshape(hull_points, (5, 2))
+    ref_up = more_pts_up(best_hull_rot_pts)
+    hull_points = sort_pt_biggest_dist_center(best_hull_rot_pts, ref_up, hull_points)
+    H, _ = cv2.findHomography(points_printed, hull_points, cv2.RANSAC)
     R, T = calc_rot_and_trans(H, K)
-    return R, T, pos_cnts, neg_cnts
+    return R, T, best_cnt
+
+
+def est_pose_in_img(gray_img, model, points_printed, verbose: bool = False):
+    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = est_cnts_in_img(gray_img, model, verbose=verbose)
+    if not len(pos_cnts):
+        if verbose:
+            print('no positive contour found')
+        return None
+
+    idx = np.argmax(pos_pred[0])
+    best_cnt = pos_conts[idx]
+    best_hull_rot_pts = hull_rot_pts[idx]
+    result = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, verbose)
+    if result is None:
+        return result
+
+    return *result, pos_pred[idx]
+
+
+def est_poses_in_img(gray_img, model, points_printed, verbose: bool = False):
+    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = est_cnts_in_img(gray_img, model, verbose=verbose)
+    if not len(pos_cnts):
+        if verbose:
+            print('no positive contour found')
+        return None
+
+    all_ret_vals = [None] * len(pos_cnts)
+    for idx in range(len(pos_cnts)):
+        result = est_pose_of_cnt(pos_cnts[idx], points_printed, hull_rot_ptsverbose[idx])
+        if result is None:
+            if verbose:
+                print(f'could not estimate pose at {idx}')
+            result = None, None, None
+
+        all_ret_vals[idx] = *result, pos_pred[idx]
+
+    return all_ret_vals
 
 
 

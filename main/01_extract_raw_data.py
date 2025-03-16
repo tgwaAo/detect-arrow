@@ -1,11 +1,13 @@
 #!/bin/env python3
 
-
-
-
-def extract_raw_data():
-    pass
+from main.processing.preparation import Preparation
 
 
 if __name__ == '__main__':
-    extract_raw_data()
+    preparator = Preparation()
+    preparator.extract_raw_pos_imgs_from_videos()
+    preparator.extract_pos_imgs_from_imgs()
+    preparator.aug_imgs_and_build_pos_dataset()
+
+    preparator.extract_neg_candidates()
+    preparator.move_part_of_unused_to_neg_dataset()
