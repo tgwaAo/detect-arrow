@@ -17,10 +17,10 @@ from sklearn.metrics import classification_report
 
 import numpy.typing as npt
 
-from main.conf.path_consts import dataset_basepath
-from main.conf.path_consts import arrows_basepath
-from main.conf.path_consts import model_basepath
-from main.conf.img_consts import COMPARED_SIZE
+from main.conf.paths import DATASET_PATH
+from main.conf.paths import ARROWS_PATH
+from main.conf.paths import MODEL_PATH
+from main.conf.imgs import COMPARED_SIZE
 
 
 class ModelHandler:
@@ -46,7 +46,7 @@ class ModelHandler:
 
     def save_model(self, basename: str = 'arrow_detection.keras'):
         if self.model is not None:
-            filepath = str(PurePath(model_basepath, basename))
+            filepath = str(PurePath(MODEL_PATH, basename))
             self.model.save(filepath)
             return True
 
@@ -79,7 +79,7 @@ class ModelHandler:
 
     def load_datasets(self):
         self.train_ds = image_dataset_from_directory(
-            dataset_basepath,
+            DATASET_PATH,
             label_mode='binary',
             color_mode='grayscale',
             batch_size=1_000,
@@ -89,7 +89,7 @@ class ModelHandler:
             subset='training',
         )
         self.val_ds = image_dataset_from_directory(
-            dataset_basepath,
+            DATASET_PATH,
             label_mode='binary',
             color_mode='grayscale',
             batch_size=1_000,
