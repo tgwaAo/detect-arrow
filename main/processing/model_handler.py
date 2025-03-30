@@ -1,5 +1,3 @@
-#!/bin/env python3
-
 # noinspection PyUnresolvedReferences
 from keras.preprocessing import image_dataset_from_directory
 # noinspection PyUnresolvedReferences
@@ -52,12 +50,6 @@ class ModelHandler:
 
         else:
             return False
-
-    def get_model(self):
-        return self.model
-
-    def unref_model(self):
-        self.model = None
 
     def build_model(self):
         self.model = Sequential([
@@ -264,4 +256,3 @@ class ModelHandler:
             ax[1, i].axis('off')
         plt.tight_layout()
         plt.show()
-

@@ -1,5 +1,3 @@
-#!/bin/env python3
-
 from pathlib import PurePath
 
 RAW_VIDS_PATH = '../../raw-positive-videos/'
@@ -15,5 +13,6 @@ MODEL_PATH = '../model/'
 EXAMPLES_PATH = '../example-images/'
 CALIB_IMGS_PATH = '../../calibration-images/'
 CAM_CONFIG_PATH = '../../cam-config/'
-PRINTED_PATH = '../printed_arrow'
+PRINTED_PATH = '../../printed-values'
+PRINTED_MEASUREMENT_FNAME = str(PurePath(PRINTED_PATH, 'calibration_measurements.json'))
 

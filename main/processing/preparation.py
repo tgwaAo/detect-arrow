@@ -1,5 +1,3 @@
-#!/bin/env python3
-
 from pathlib import PurePath
 import pathlib as pl
 import random
@@ -120,8 +118,8 @@ class Preparation:
             ret = m_handler.load_model(model_path)
 
         if ret:
-            self.model = m_handler.get_model()
-            m_handler.unref_model()
+            self.model = m_handler.model
+            m_handler.model = None
         else:
             return False
 
