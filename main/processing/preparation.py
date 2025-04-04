@@ -126,7 +126,12 @@ class Preparation:
         self.model.trainable = False
         return True
 
-    def extract_pos_imgs_from_imgs(self, use_model: bool = False, min_area_cnt: int = AREA_BORDER-10):
+    def extract_pos_imgs_from_imgs(
+        self,
+        use_model: bool = False,
+        min_area_cnt: int = AREA_BORDER-10,
+        expected_pts: int = ARROW_CONTOUR_POINTS
+    ):
         for img_filename in glob(str(PurePath(RAW_IMGS_PATH, '*.jpg'))):
             gray_img = cv2.imread(img_filename, cv2.IMREAD_GRAYSCALE)
             if gray_img is None:
@@ -137,7 +142,7 @@ class Preparation:
             cnts = extract_cnts(blurred)
 
             if use_model and self.model is not None:
-                filtered_list, cnts, hull_rot_pts = filter_cnts(cnts, gray_img)
+                filtered_list, cnts, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
                 if not len(filtered_list):
                     print(f'no candidate for prediction found in {img_filename}')
                     continue
