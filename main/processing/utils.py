@@ -2,15 +2,23 @@ import numpy as np
 import cv2
 
 import numpy.typing as npt
+from typing import Optional as Opt
+from typing import TypeAlias
+from typing import Union
+from keras.models import Sequential
+from tensorflow.python.framework.ops import EagerTensor
 
 from main.conf.imgs import MIN_WIDTH_TO_HEIGHT
 from main.conf.imgs import MAX_WIDTH_TO_HEIGHT
 from main.conf.imgs import AREA_BORDER
 from main.conf.imgs import TARGET_SIZE
 from main.conf.imgs import COMPARED_SIZE
+from main.conf.imgs import ARROW_CONTOUR_POINTS
 from main.conf.imgs import BLUR_KERNEL
 from datetime import datetime
 from datetime import timezone
+
+cnt_container = tuple[npt.NDArray[int] | list[npt.NDArray[int]]]
 
 
 def get_current_time_string():
@@ -51,7 +59,7 @@ def filter_and_extract_norm_img_from_cnt(gray_img, con):
     return None
 
 
-def extract_cnts(img, sigma=0.33):
+def extract_cnts(img: npt.NDArray[np.uint8], sigma: float =0.33) -> cnt_container:
     v = np.median(img)
     # ---- apply automatic Canny edge detection using the computed median----
     lower = int(max(0, (1.0 - sigma) * v))  # ---- lower threshold
@@ -103,11 +111,11 @@ def merge_points(points, max_merge_dist=4):
 
 
 def rotate_and_crop(
-        image,
-        min_area_rect,
-        factor=1.3,
-        cnt=None
-) -> tuple[npt.NDArray[np.uint8], list[tuple[float,float]]]:
+        image: npt.NDArray[np.uint8],
+        min_area_rect: tuple[tuple[float], tuple[float], float],
+        factor: float = 1.3,
+        cnt: Opt[npt.NDArray[int]] = None
+) -> tuple[npt.NDArray[np.uint8], npt.NDArray[float]]:
     box = cv2.boxPoints(min_area_rect)
     box = np.intp(box)
 
@@ -168,25 +176,50 @@ def get_rotation(min_area_angle, width_to_height):
     return min_rect_angle_deg
 
 
-def sort_cnts(prediction, cnts, hull_rot_pts):
-    mask = np.zeros(len(cnts), dtype=bool)
-    mask[np.where(prediction >= 0.5)[0]] = True
-    positive_contours = cnts[mask]
-    negative_contours = cnts[~mask]
-    pos_prediction = prediction[0][mask]
-    neg_prediction = prediction[0][~mask]
-    hull_rot_pts = hull_rot_pts[mask]
+def sort_cnts(
+    prediction: EagerTensor,
+    cnts: cnt_container,
+    hull_rot_pts: npt.NDArray[float]
+) -> tuple[
+    Opt[list[int]],
+    Opt[list[int]],
+    Opt[list[float]],
+    Opt[list[float]],
+    Opt[list[float]]
+]:
+    idxs = np.where(prediction >= 0.5)[0]
+
+    if len(idxs):
+        positive_contours = [element for idx, element in enumerate(cnts) if idx in idxs]
+        pos_prediction = [element for idx, element in enumerate(prediction) if idx in idxs]
+        hull_rot_pts = [element for idx, element in enumerate(hull_rot_pts) if idx in idxs]
+    else:
+        positive_contours = None
+        hull_rot_pts = None
+        pos_prediction = None
+
+    if len(idxs) < len(prediction):
+        negative_contours = [element for idx, element in enumerate(cnts) if idx not in idxs]
+        neg_prediction = [element for idx, element in enumerate(prediction[0]) if idx not in idxs]
+    else:
+        negative_contours = None
+        neg_prediction = None
+
     return positive_contours, negative_contours, pos_prediction, neg_prediction, hull_rot_pts
 
 
-def filter_cnts(cnts, gray_img=None):
+def filter_cnts(
+    cnts: cnt_container,
+    gray_img: npt.NDArray[np.uint8] = None,
+    expected_pts: int = None
+) -> tuple[npt.NDArray[np.uint8], cnt_container, npt.NDArray[int]]:
     small_imgs = []
     filtered_cnts = []
     center_list = []
     hull_rot_pts = []
     too_close = False
-    for pos_source, con in enumerate(cnts):
-        min_rect = cv2.minAreaRect(con)
+    for cnt in cnts:
+        min_rect = cv2.minAreaRect(cnt)
         center, size, angle_deg = min_rect
         area = size[0] * size[1]
 
@@ -209,14 +242,18 @@ def filter_cnts(cnts, gray_img=None):
             if too_close:
                 continue
 
-            center_list.append(center)
-            filtered_cnts.append(con)
-
             if gray_img is not None:
-                cropped_img, rot_pts = rotate_and_crop(gray_img, min_rect, cnt=con)
-                hull_rot_pts.append(rot_pts)
-                small_img = cv2.resize(cropped_img, COMPARED_SIZE)
-                small_imgs.append(small_img)
+                cropped_img, rot_pts = rotate_and_crop(gray_img, min_rect, cnt=cnt)
+                if expected_pts and len(rot_pts) == expected_pts:
+                    hull_rot_pts.append(rot_pts)
+                    small_img = cv2.resize(cropped_img, TARGET_SIZE)
+                    small_imgs.append(small_img)
+                    center_list.append(center)
+                    filtered_cnts.append(cnt)
+
+            else:
+                center_list.append(center)
+                filtered_cnts.append(cnt)
 
     small_imgs = np.array(small_imgs)
     hull_rot_pts = np.array(hull_rot_pts)
@@ -271,8 +308,8 @@ def rot_centered_pts(pts, ref_angle_rad):
     for idx, pt in enumerate(pts):
         angle_rad = np.arctan2(pt[1], pt[0]) + ref_angle_rad
         dist = np.hypot(pt[0], pt[1])
-        pt_x = dist * np.cos(angle_rad)
-        pt_y = dist * np.sin(angle_rad)
+        pt_x = np.round(dist * np.cos(angle_rad), decimals=4)
+        pt_y = np.round(dist * np.sin(angle_rad), decimals=4)
         rot_pts[idx] = pt_x, pt_y
 
     return rot_pts
@@ -291,52 +328,66 @@ def sort_pt_biggest_dist_center(pts, ref_up, org_pts):
     return sort_pts_by_angles(rot_pts, org_pts)
 
 
-def calc_rot_and_trans(H, K):
-    H = H.T
-    h1 = H[0]
-    h2 = H[1]
-    h3 = H[2]
-    K_inv = np.linalg.inv(K)
-    L = 1 / np.linalg.norm(np.dot(K_inv, h1))
-    r1 = L * np.dot(K_inv, h1)
-    r2 = L * np.dot(K_inv, h2)
+def calc_rot_and_trans(homogr, mtx) -> tuple[npt.NDArray[float], npt.NDArray[float]]:
+    homogr = homogr.T
+    h1 = homogr[0]
+    h2 = homogr[1]
+    h3 = homogr[2]
+    mtx_inv = np.linalg.inv(mtx)
+    L = 1 / np.linalg.norm(np.dot(mtx_inv, h1))
+    r1 = L * np.dot(mtx_inv, h1)
+    r2 = L * np.dot(mtx_inv, h2)
     r3 = np.cross(r1, r2)
 
-    T = L * np.dot(K_inv, h3)
-    # print(T)
+    trans = L * np.dot(mtx_inv, h3)
 
-    R = np.array([[r1], [r2], [r3]])
-    R = np.reshape(R, (3, 3))
-    U, S, V = np.linalg.svd(R, full_matrices=True)
+    rot = np.array([[r1], [r2], [r3]])
+    rot = np.reshape(rot, (3, 3))
+    U, S, V = np.linalg.svd(rot, full_matrices=True)
     U = np.matrix(U)
     V = np.matrix(V)
-    R = U * V
+    rot = U * V
 
-    alpha = np.rad2deg(np.arctan2(R[2, 1], R[2, 2]))
-    beta = np.rad2deg(np.arctan2(-R[2, 0], np.sqrt(R[2, 1] * R[2, 1] + R[2, 2] * R[2, 2])))
-    gamma = np.rad2deg((np.arctan2(R[1, 0], R[0, 0])))
-    return np.array((alpha, beta, gamma)), T
+    alpha = np.rad2deg(np.arctan2(rot[2, 1], rot[2, 2]))
+    beta = np.rad2deg(np.arctan2(-rot[2, 0], np.sqrt(rot[2, 1] * rot[2, 1] + rot[2, 2] * rot[2, 2])))
+    gamma = np.rad2deg((np.arctan2(rot[1, 0], rot[0, 0])))
+    return np.array((alpha, beta, gamma)), trans
 
 
 def est_cnts_in_img(
-    gray_img,
-    model,
-    verbose: bool = False
-) -> tuple[npt.NDArray[int], npt.NDArray[int], npt.NDArray[float], npt.NDArray[float], npt.NDArray[int]]:
-    cnts, gray_img = extract_cnts(gray_img)
-    filtered_images, cnts, hull_rot_pts = filter_cnts(cnts, gray_img)
+    gray_img: npt.NDArray[np.uint8],
+    model: Sequential,
+    verbose: bool = False,
+    expected_pts: int = ARROW_CONTOUR_POINTS
+) -> Opt[
+    tuple[
+        Opt[npt.NDArray[int]],
+        Opt[npt.NDArray[int]],
+        Opt[npt.NDArray[float]],
+        Opt[npt.NDArray[float]],
+        Opt[npt.NDArray[int]]]
+]:
+    cnts = extract_cnts(gray_img)
+
+    filtered_images, cnts, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
 
     if not len(filtered_images):
         if verbose:
             print('no candidate for prediction found')
         return None
 
-    prediction = model(filtered_images, verbose=0)
+    prediction = model(filtered_images)
 
     return sort_cnts(prediction, cnts, hull_rot_pts)
 
 
-def est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, verbose):
+def est_pose_of_cnt(
+    best_cnt,
+    points_printed,
+    best_hull_rot_pts,
+    mtx,
+    verbose=False
+) -> tuple[npt.NDArray[float], npt.NDArray[float]]:
     hull_points = extract_feature_pts(best_cnt)
     hull_points = merge_points(hull_points)
     if len(hull_points) != 5:
@@ -346,30 +397,56 @@ def est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, verbose):
     hull_points = np.reshape(hull_points, (5, 2))
     ref_up = more_pts_up(best_hull_rot_pts)
     hull_points = sort_pt_biggest_dist_center(best_hull_rot_pts, ref_up, hull_points)
-    H, _ = cv2.findHomography(points_printed, hull_points, cv2.RANSAC)
-    R, T = calc_rot_and_trans(H, K)
-    return R, T, best_cnt
+
+    points_printed = sort_pt_biggest_dist_center(points_printed, False, points_printed)
+    homogr, _ = cv2.findHomography(points_printed, hull_points, cv2.RANSAC)
+    rot, trans = calc_rot_and_trans(homogr, mtx)
+    return rot, trans
 
 
-def est_pose_in_img(gray_img, model, points_printed, verbose: bool = False):
-    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = est_cnts_in_img(gray_img, model, verbose=verbose)
-    if not len(pos_cnts):
+def est_pose_in_img(
+    gray_img: npt.NDArray[np.uint8],
+    model: Sequential,
+    points_printed: npt.NDArray[np.uint8],
+    mtx,
+    verbose: bool = False
+) -> Opt[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]:
+    result = est_cnts_in_img(gray_img, model, verbose=verbose)
+    if result is None:
+        return None
+
+    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = result
+
+    if pos_cnts is None:
         if verbose:
             print('no positive contour found')
+        result = None
+
+    if result is None:
         return None
 
     idx = np.argmax(pos_pred[0])
-    best_cnt = pos_conts[idx]
+    best_cnt = pos_cnts[idx]
     best_hull_rot_pts = hull_rot_pts[idx]
-    result = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, verbose)
+    result = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, mtx, verbose)
     if result is None:
-        return result
+        return None
 
-    return *result, pos_pred[idx]
+    return *result, best_cnt, pos_pred[idx]
 
 
-def est_poses_in_img(gray_img, model, points_printed, verbose: bool = False):
-    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = est_cnts_in_img(gray_img, model, verbose=verbose)
+def est_poses_in_img(
+    gray_img,
+    model,
+    points_printed,
+    mtx,
+    verbose: bool = False
+) -> Opt[list[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]]:
+    result = est_cnts_in_img(gray_img, model, verbose=verbose)
+    if result is None:
+        return None
+    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = result
+
     if not len(pos_cnts):
         if verbose:
             print('no positive contour found')
@@ -377,13 +454,13 @@ def est_poses_in_img(gray_img, model, points_printed, verbose: bool = False):
 
     all_ret_vals = [None] * len(pos_cnts)
     for idx in range(len(pos_cnts)):
-        result = est_pose_of_cnt(pos_cnts[idx], points_printed, hull_rot_ptsverbose[idx])
+        result = est_pose_of_cnt(pos_cnts[idx], points_printed, hull_rot_pts[idx], mtx, verbose)
         if result is None:
             if verbose:
                 print(f'could not estimate pose at {idx}')
-            result = None, None, None
-
-        all_ret_vals[idx] = *result, pos_pred[idx]
+            all_ret_vals[idx] = None
+        else:
+            all_ret_vals[idx] = *result, pos_cnts[idx], pos_pred[idx][0]
 
     return all_ret_vals
 

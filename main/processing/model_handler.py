@@ -35,7 +35,7 @@ class ModelHandler:
         self.labels = None
 
     def load_model(self, basename: str = 'arrow_detection.keras'):
-        filepath = str(PurePath(model_basepath, basename))
+        filepath = str(PurePath(MODEL_PATH, basename))
         try:
             self.model = load_model(filepath)
             return True
