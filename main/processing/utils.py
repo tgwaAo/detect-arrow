@@ -387,7 +387,7 @@ def est_pose_of_cnt(
     best_hull_rot_pts,
     mtx,
     verbose=False
-) -> tuple[npt.NDArray[float], npt.NDArray[float]]:
+) -> Opt[tuple[npt.NDArray[float], npt.NDArray[float]]]:
     hull_points = extract_feature_pts(best_cnt)
     hull_points = merge_points(hull_points)
     if len(hull_points) != 5:
@@ -432,7 +432,7 @@ def est_pose_in_img(
     if result is None:
         return None
 
-    return *result, best_cnt, pos_pred[idx]
+    return *result, best_cnt, pos_pred[idx][0]
 
 
 def est_poses_in_img(
