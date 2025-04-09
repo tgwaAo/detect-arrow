@@ -30,7 +30,6 @@ if __name__ == '__main__':
     hsv_pixel = np.ones((1, 1, 3), np.uint8) * 240
     low_color_val = 0
     high_color_val = 180
-    color_sum = 550  # avoid dark colors
     rnd_gentr = np.random.default_rng()
 
     for img_fname in glob(str(pl.PurePath(EXAMPLES_PATH, '*'))):
@@ -61,10 +60,6 @@ if __name__ == '__main__':
             )
             hsv_pixel[0, 0, 0] = rnd_gentr.integers(low_color_val, high_color_val, dtype=np.uint8)
             color = cv2.cvtColor(hsv_pixel, cv2.COLOR_HSV2BGR)[0,0].astype(object)
-            # red = rnd_gentr.integers(low_color_val, high_color_val, dtype=int, endpoint=True)
-            # blue = rnd_gentr.integers(low_color_val, high_color_val, dtype=int, endpoint=True)
-            # green = min((color_sum - red - blue, high_color_val))
-            # print((blue, green, red))
             cv2.drawContours(img, [cnt], -1, color, 2)
             y_location -= 15
             cv2.putText(
