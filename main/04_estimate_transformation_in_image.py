@@ -13,6 +13,7 @@ from main.conf.paths import CAM_CONFIG_PATH
 from main.processing.model_handler import ModelHandler
 from main.processing.utils import est_poses_in_img
 
+
 if __name__ == '__main__':
     handler = ModelHandler()
     ret = handler.load_model()
@@ -31,6 +32,8 @@ if __name__ == '__main__':
     low_color_val = 0
     high_color_val = 180
     rnd_gentr = np.random.default_rng()
+
+    np.set_printoptions(suppress=True)
 
     for img_fname in glob(str(pl.PurePath(EXAMPLES_PATH, '*'))):
         img = cv2.imread(img_fname)

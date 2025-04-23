@@ -119,7 +119,6 @@ if __name__ == '__main__':
     except Exception as e:
         print(traceback.format_exc())
 
-
     cap.release()
     cv2.destroyAllWindows()
     print('done')
