@@ -17,8 +17,10 @@ import numpy.typing as npt
 
 from main.conf.paths import DATASET_PATH
 from main.conf.paths import ARROWS_PATH
-from main.conf.paths import MODEL_PATH
+from main.conf.paths import MODELS_PATH
+from main.conf.paths import MODEL_BNAME
 from main.conf.imgs import COMPARED_SIZE
+from main.processing.utils import get_newest_fname_in_path
 
 
 class ModelHandler:
@@ -34,17 +36,21 @@ class ModelHandler:
         self.images = None
         self.labels = None
 
-    def load_model(self, basename: str = 'arrow_detection.keras'):
-        filepath = str(PurePath(MODEL_PATH, basename))
+    def load_model(self, basename: str = None):
+        if basename is None:
+            newest_model = get_newest_fname_in_path(MODELS_PATH)
+        else:
+            newest_model = str(pl.PurePath(MODELS_PATH, basename))
+
         try:
-            self.model = load_model(filepath)
+            self.model = load_model(newest_model)
             return True
         except OSError:
             return False
 
     def save_model(self, basename: str = 'arrow_detection.keras'):
         if self.model is not None:
-            filepath = str(PurePath(MODEL_PATH, basename))
+            filepath = str(PurePath(MODELS_PATH, basename))
             self.model.save(filepath)
             return True
 
@@ -69,9 +75,9 @@ class ModelHandler:
         )
         print(self.model.summary())
 
-    def load_datasets(self):
+    def load_datasets(self, dataset_path: str = DATASET_PATH):
         self.train_ds = image_dataset_from_directory(
-            DATASET_PATH,
+            dataset_path,
             label_mode='binary',
             color_mode='grayscale',
             batch_size=1_000,
@@ -81,7 +87,7 @@ class ModelHandler:
             subset='training',
         )
         self.val_ds = image_dataset_from_directory(
-            DATASET_PATH,
+            dataset_path,
             label_mode='binary',
             color_mode='grayscale',
             batch_size=1_000,
@@ -92,7 +98,11 @@ class ModelHandler:
             subset='validation',
         )
 
-    def train_model(self, epochs=10):
+    def train_model(self, epochs=10, train_ds=None, val_ds=None):
+        if train_ds is not None:
+            self.train_ds = train_ds
+        if val_ds is not None:
+            self.val_ds = val_ds
         self.history = self.model.fit(
             self.train_ds,
             validation_data=self.val_ds,
@@ -101,27 +111,31 @@ class ModelHandler:
 
     def show_training_progress(self):
         if self.history is not None:
-            loss_values = self.history.history['loss']
-            val_loss_values = self.history.history['val_loss']
+            loss_values = self.history.history.get('loss', None)
+            val_loss_values = self.history.history.get('val_loss', None)
             plt_epochs = range(1, (len(loss_values) + 1))
 
-            line1 = plt.plot(plt_epochs, val_loss_values, label='Validation/Test Loss')
-            line2 = plt.plot(plt_epochs, loss_values, label='Training Loss')
-            plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
-            plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
+            if val_loss_values:
+                line1 = plt.plot(plt_epochs, val_loss_values, label='Validation/Test Loss')
+                plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
+            if loss_values:
+                line2 = plt.plot(plt_epochs, loss_values, label='Training Loss')
+                plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
             plt.xlabel('Epochs')
             plt.ylabel('Loss')
             plt.grid(True)
             plt.legend()
             plt.show()
 
-            acc_values = self.history.history['accuracy']
-            val_acc_values = self.history.history['val_accuracy']
+            acc_values = self.history.history.get('accuracy', None)
+            val_acc_values = self.history.history.get('val_accuracy', None)
 
-            line1 = plt.plot(plt_epochs, val_acc_values, label='Validation/Test Accuracy')
-            line2 = plt.plot(plt_epochs, acc_values, label='Training Accuracy')
-            plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
-            plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
+            if val_acc_values:
+                line1 = plt.plot(plt_epochs, val_acc_values, label='Validation/Test Accuracy')
+                plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
+            if acc_values:
+                line2 = plt.plot(plt_epochs, acc_values, label='Training Accuracy')
+                plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
             plt.xlabel('Epochs')
             plt.ylabel('Accuracy')
             plt.grid(True)
@@ -215,9 +229,11 @@ class ModelHandler:
                     break
 
         saliency_part = np.asarray(saliency_part)
-        for i in saliency_part:
-            plt.imshow(i, cmap='gray')
-            plt.show()
+        labels = np.hstack((np.ones(5), np.zeros(5)))
+        # for i in saliency_part:
+        #     plt.imshow(i, cmap='gray')
+        #     plt.title(labels)
+        #     plt.show()
 
         if quick_hack:
             self.do_quick_hack()
@@ -241,14 +257,16 @@ class ModelHandler:
                 output[9][0]
             )
 
+        self.another_hack()  # https://github.com/onnx/tensorflow-onnx/issues/2319
+
         saliency = Saliency(self.model,
                             model_modifier=replace2linear,
                             clone=False)
 
         saliency_map = saliency(score_function, saliency_part)
-        image_titles = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
-        f, ax = plt.subplots(nrows=2, ncols=len(image_titles), figsize=(12, 4))
-        for i, title in enumerate(image_titles):
+        # image_titles = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
+        f, ax = plt.subplots(nrows=2, ncols=len(labels), figsize=(12, 4))
+        for i, title in enumerate(labels):
             ax[0, i].set_title(title, fontsize=16)
             ax[0, i].imshow(saliency_map[i], cmap='jet')
             ax[0, i].axis('off')
@@ -256,3 +274,6 @@ class ModelHandler:
             ax[1, i].axis('off')
         plt.tight_layout()
         plt.show()
+
+    def another_hack(self):
+        self.model.output_names = ['dense_1']

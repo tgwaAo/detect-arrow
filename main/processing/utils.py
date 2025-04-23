@@ -1,3 +1,5 @@
+import pathlib as pl
+
 import numpy as np
 import cv2
 
@@ -8,8 +10,11 @@ from typing import Union
 from keras.models import Sequential
 from tensorflow.python.framework.ops import EagerTensor
 
+from main.conf.paths import RAW_VIDS_PATH
+from main.conf.paths import RAW_POS_IMGS_PATH
 from main.conf.imgs import MIN_WIDTH_TO_HEIGHT
 from main.conf.imgs import MAX_WIDTH_TO_HEIGHT
+from main.conf.imgs import SIMILAR_AREA_PERCENT
 from main.conf.imgs import AREA_BORDER
 from main.conf.imgs import TARGET_SIZE
 from main.conf.imgs import COMPARED_SIZE
@@ -21,17 +26,82 @@ from datetime import timezone
 cnt_container = tuple[npt.NDArray[int] | list[npt.NDArray[int]]]
 
 
+def get_newest_fname_in_path(path: str):
+    return str(max(pl.Path(path).glob('*'), key=lambda p: p.stat().st_ctime))
+
+
 def get_current_time_string():
     return datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S-%f')
 
 
+def create_sub_path_with_nbr(path: str, nbr):
+    path = pl.PurePath(path)
+    return str(path.parent / f'{path.name}-{nbr}')
+
+
+def handle_options(given: str, existing: str, prepared: str) -> str:
+    if given is None:
+        if existing is None:
+            return prepared
+    else:
+        return given
+    return existing
+
+
+def costum_sort(element: pl.PurePath):
+    sep_words = str(element).split('-')
+    if sep_words[-1].isdigit():
+        return int(sep_words[-1])
+    else:
+        return 0
+
+
+def srtd_lst_candidates(ref_path: pl.Path):
+    basename = ref_path.name
+    paths = sorted(ref_path.parent.glob(f'{basename}*'), key=costum_sort)
+    return paths
+
+
+def get_user_ans(paths, new_candidate=None):
+    idx = -1
+    for idx, path in enumerate(paths):
+        print(f'{idx}: {path}')
+
+    if new_candidate:
+        print('new candidate')
+        print(f'{idx + 1}: {new_candidate}')
+
+    ans = input('choose number [default:none] >>')
+    if ans.isdigit():
+        ans = int(ans)
+        if ans <= idx:
+            return paths[ans], ans
+        else:
+            return new_candidate, idx + 1
+
+    else:
+        return None
+
+
+def choose_costum_path(ref_path, only_existing=False):
+    ref_path = pl.Path(ref_path)
+    paths = srtd_lst_candidates(ref_path)
+    if not only_existing:
+        nbr_next_path = costum_sort(paths[-1]) + 1
+        new_candidate = pl.Path(f'{ref_path.parent}', f'{ref_path.name}-{nbr_next_path}')
+    else:
+        new_candidate = None
+
+    return get_user_ans(paths, new_candidate)
+
+
 def filter_and_extract_img_from_cnt(
     gray_img,
-    con,
+    cnt,
     area_filter: bool = True,
     w_h_filter: bool = True
 ) -> npt.NDArray | None:
-    min_rect = cv2.minAreaRect(con)
+    min_rect = cv2.minAreaRect(cnt)
     center, size, angle = min_rect
     area = size[0] * size[1]
 
@@ -43,11 +113,24 @@ def filter_and_extract_img_from_cnt(
     width_to_height = low_value / high_value
 
     if MIN_WIDTH_TO_HEIGHT < width_to_height < MAX_WIDTH_TO_HEIGHT or not w_h_filter:
-        cropped_img, _ = rotate_and_crop(gray_img, min_rect)
-        small_img = cv2.resize(cropped_img, TARGET_SIZE)
-        return small_img
+        return extract_img_from_cnt(gray_img, min_rect)
 
     return None
+
+
+def save_img(path, gray_img):
+    timestring = get_current_time_string()
+    retval = cv2.imwrite(str(pl.PurePath(path, f'img_{timestring}.jpg')), gray_img)
+    if not retval:
+        raise ValueError(f'could not write image: {retval}')
+
+
+def extract_img_from_cnt(gray_img, shape):
+    if not isinstance(shape, tuple):
+        shape = cv2.minAreaRect(shape)
+    cropped_img, _ = rotate_and_crop(gray_img, shape)
+    small_img = cv2.resize(cropped_img, TARGET_SIZE)
+    return small_img
 
 
 def filter_and_extract_norm_img_from_cnt(gray_img, con):
@@ -69,7 +152,8 @@ def extract_cnts(img: npt.NDArray[np.uint8], sigma: float =0.33) -> cnt_containe
     return cnts
 
 
-def extract_feature_pts(pos_cnt, factor: float = 0.04):
+# def extract_feature_pts(pos_cnt, factor: float = 0.04):
+def extract_feature_pts(pos_cnt, factor: float = 0.01):
     retval = cv2.arcLength(pos_cnt, True)
     points = cv2.approxPolyDP(pos_cnt, factor * retval, True)
     return points
@@ -200,7 +284,7 @@ def sort_cnts(
 
     if len(idxs) < len(prediction):
         negative_contours = [element for idx, element in enumerate(cnts) if idx not in idxs]
-        neg_prediction = [element for idx, element in enumerate(prediction[0]) if idx not in idxs]
+        neg_prediction = [element for idx, element in enumerate(prediction) if idx not in idxs]
     else:
         negative_contours = None
         neg_prediction = None
@@ -216,8 +300,10 @@ def filter_cnts(
     small_imgs = []
     filtered_cnts = []
     center_list = []
+    area_list = []
     hull_rot_pts = []
     too_close = False
+    skip = False
     for cnt in cnts:
         min_rect = cv2.minAreaRect(cnt)
         center, size, angle_deg = min_rect
@@ -234,12 +320,17 @@ def filter_cnts(
         width_to_height = low_value / high_value
 
         if MIN_WIDTH_TO_HEIGHT < width_to_height < MAX_WIDTH_TO_HEIGHT:
-            for c_point in center_list:
+            skip = False
+            for c_point, a_point in zip(center_list, area_list):
                 too_close = np.all(np.isclose(center, c_point, rtol=0, atol=20))
-                if too_close:
+                low_value = min(area, a_point)
+                high_value = max(area, a_point)
+                percentage = low_value / high_value
+                if percentage > SIMILAR_AREA_PERCENT and too_close:  # two contours of same edge
+                    skip = True
                     break
 
-            if too_close:
+            if skip:
                 continue
 
             if gray_img is not None:
@@ -248,12 +339,14 @@ def filter_cnts(
                     hull_rot_pts.append(rot_pts)
                     small_img = cv2.resize(cropped_img, TARGET_SIZE)
                     small_imgs.append(small_img)
-                    center_list.append(center)
                     filtered_cnts.append(cnt)
+                    area_list.append(area)
+                    center_list.append(center)
 
             else:
-                center_list.append(center)
                 filtered_cnts.append(cnt)
+                area_list.append(area)
+                center_list.append(center)
 
     small_imgs = np.array(small_imgs)
     hull_rot_pts = np.array(hull_rot_pts)
@@ -390,11 +483,11 @@ def est_pose_of_cnt(
 ) -> Opt[tuple[npt.NDArray[float], npt.NDArray[float]]]:
     hull_points = extract_feature_pts(best_cnt)
     hull_points = merge_points(hull_points)
-    if len(hull_points) != 5:
+    if len(hull_points) != ARROW_CONTOUR_POINTS:
         if verbose:
-            print(f'not enough hull points, got {len(hull_points)} need 5')
+            print(f'incorrect number of hull points, got {len(hull_points)} need {ARROW_CONTOUR_POINTS}')
         return None
-    hull_points = np.reshape(hull_points, (5, 2))
+    hull_points = np.reshape(hull_points, (ARROW_CONTOUR_POINTS, 2))
     ref_up = more_pts_up(best_hull_rot_pts)
     hull_points = sort_pt_biggest_dist_center(best_hull_rot_pts, ref_up, hull_points)
 
