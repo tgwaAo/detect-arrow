@@ -3,9 +3,20 @@ import threading
 
 import cv2
 
+from typing import Optional as Opt
+
+import numpy as np
+import numpy.typing as npt
+
 
 class VideoCapture:
-    def __init__(self, target: int = 0, cam_width = None, cam_height = None, drop_if_full = True):
+    def __init__(
+        self,
+        target: int = 0,
+        cam_width: Opt[int] = None,
+        cam_height: Opt[int] = None,
+        drop_if_full:bool = True
+    ) -> None:
         self.stopped = False
         self.drop_if_full = drop_if_full
         self.lock = threading.Lock()
@@ -22,7 +33,7 @@ class VideoCapture:
         self.t = threading.Thread(target=self._reader)
         self.t.start()
 
-    def _reader(self):
+    def _reader(self) -> None:
         while not self.stop_cam_thread.is_set():
             if self.drop_if_full or not self.Q.full():
                 if self.Q.full():
@@ -37,7 +48,7 @@ class VideoCapture:
 
                 self.Q.put(image)
 
-    def read(self):
+    def read(self) -> tuple[bool, Opt[npt.NDArray[np.uint8]]]:
         if self.stop_cam_thread.is_set():
             ret = False
             img = None
@@ -49,16 +60,16 @@ class VideoCapture:
             img = None
         return ret, img
 
-    def isOpened(self):
+    def isOpened(self) -> bool:
         with self.lock:
             ret = self.cap.isOpened()
         return ret
 
-    def set(self, *args):
+    def set(self, *args) -> None:
         with self.lock:
             self.cap.set(*args)
 
-    def release(self):
+    def release(self) -> None:
         if self.isOpened():
             self.stop_cam_thread.set()
             self.t.join()

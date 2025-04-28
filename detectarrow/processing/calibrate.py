@@ -8,13 +8,14 @@ import numpy as np
 import typing
 import numpy.typing as npt
 
-from main.conf.paths import CALIB_IMGS_PATH
-from main.conf.paths import CAM_CONFIG_PATH
-from main.conf.paths import PRINTED_MEASUREMENT_FNAME
-from main.conf.imgs import TERM_CRITERIA
+from detectarrow.conf.paths import CALIB_IMGS_PATH
+from detectarrow.conf.paths import CAM_CONFIG_PATH
+from detectarrow.conf.paths import PRINTED_MEASUREMENT_FNAME
+from detectarrow.conf.imgs import TERM_CRITERIA
+
 
 class Calibrator:
-    def __init__(self, p_dist: int = 1):
+    def __init__(self) -> None:
         self.obj_points = []
         self.img_points = []
         self.mtx = None
@@ -27,7 +28,7 @@ class Calibrator:
         self.width = None
         self.height = None
 
-    def read_printed_nbrs(self, fname: str = PRINTED_MEASUREMENT_FNAME):
+    def read_printed_nbrs(self, fname: str = PRINTED_MEASUREMENT_FNAME) -> None:
         with open(fname, 'r') as file:
             calib_values = json.load(file)
 
@@ -71,15 +72,14 @@ class Calibrator:
             return False
 
         ret, self.mtx, self.dist, self.rvecs, self.tvecs = cv2.calibrateCamera(self.obj_points, self.img_points, gray.shape[::-1], None, None)
-        if ret:
-            if save:
-                np.savetxt(str(PurePath(path, 'mtx.txt')), self.mtx)
-                np.savetxt(str(PurePath(path, 'dist.txt')), self.dist)
-
-            return True
-
-        else:
+        if not ret:
             return False
+
+        if save:
+            np.savetxt(str(PurePath(path, 'mtx.txt')), self.mtx)
+            np.savetxt(str(PurePath(path, 'dist.txt')), self.dist)
+
+        return True
 
     def prepare_undistortion(self, alpha: int = 1, path: str = CALIB_IMGS_PATH) -> None:
         if self.mtx is None or self.dist is None:
@@ -103,7 +103,7 @@ class Calibrator:
         undistorted = self.undistort(img)
         return cv2.addWeighted(img, 0.5, undistorted, 0.5, 0)
 
-    def error(self):
+    def error(self) -> Opt[float]:
         if (
             self.obj_points is not None and
             self.mtx is not None and
@@ -126,4 +126,3 @@ class Calibrator:
             return mean_error / len(self.obj_points)
         else:
             return None
-

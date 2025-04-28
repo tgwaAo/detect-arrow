@@ -4,37 +4,43 @@ import numpy as np
 import cv2
 
 import numpy.typing as npt
-from typing import Optional as Opt
+from typing import Optional as Opt, Any
 from typing import TypeAlias
 from typing import Union
 from keras.models import Sequential
+from numpy import ndarray, dtype
 from tensorflow.python.framework.ops import EagerTensor
+from typing import Union
+import tensorflow as tf
 
-from main.conf.paths import RAW_VIDS_PATH
-from main.conf.paths import RAW_POS_IMGS_PATH
-from main.conf.imgs import MIN_WIDTH_TO_HEIGHT
-from main.conf.imgs import MAX_WIDTH_TO_HEIGHT
-from main.conf.imgs import SIMILAR_AREA_PERCENT
-from main.conf.imgs import AREA_BORDER
-from main.conf.imgs import TARGET_SIZE
-from main.conf.imgs import COMPARED_SIZE
-from main.conf.imgs import ARROW_CONTOUR_POINTS
-from main.conf.imgs import BLUR_KERNEL
+from detectarrow.conf.paths import RAW_VIDS_PATH
+from detectarrow.conf.paths import RAW_POS_IMGS_PATH
+from detectarrow.conf.imgs import MIN_WIDTH_TO_HEIGHT
+from detectarrow.conf.imgs import MAX_WIDTH_TO_HEIGHT
+from detectarrow.conf.imgs import SIMILAR_AREA_PERCENT
+from detectarrow.conf.imgs import AREA_BORDER
+from detectarrow.conf.imgs import TARGET_SIZE
+from detectarrow.conf.imgs import COMPARED_SIZE
+from detectarrow.conf.imgs import ARROW_CONTOUR_POINTS
+from detectarrow.conf.imgs import BLUR_KERNEL
 from datetime import datetime
 from datetime import timezone
 
-cnt_container = tuple[npt.NDArray[int] | list[npt.NDArray[int]]]
+type cnt_container = Union[
+    list[npt.NDArray[int], ...],
+    tuple[npt.NDArray[int], ...]
+]
 
 
-def get_newest_fname_in_path(path: str):
+def get_newest_fname_in_path(path: str) -> str:
     return str(max(pl.Path(path).glob('*'), key=lambda p: p.stat().st_ctime))
 
 
-def get_current_time_string():
+def get_current_time_string() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S-%f')
 
 
-def create_sub_path_with_nbr(path: str, nbr):
+def create_sub_path_with_nbr(path: str, nbr: int) -> str:
     path = pl.PurePath(path)
     return str(path.parent / f'{path.name}-{nbr}')
 
@@ -48,7 +54,7 @@ def handle_options(given: str, existing: str, prepared: str) -> str:
     return existing
 
 
-def costum_sort(element: pl.PurePath):
+def costum_sort(element: pl.PurePath) -> int:
     sep_words = str(element).split('-')
     if sep_words[-1].isdigit():
         return int(sep_words[-1])
@@ -56,13 +62,13 @@ def costum_sort(element: pl.PurePath):
         return 0
 
 
-def srtd_lst_candidates(ref_path: pl.Path):
+def srtd_lst_candidates(ref_path: pl.Path) -> list[pl.Path]:
     basename = ref_path.name
     paths = sorted(ref_path.parent.glob(f'{basename}*'), key=costum_sort)
     return paths
 
 
-def get_user_ans(paths, new_candidate=None):
+def get_user_ans(paths: list[pl.Path], new_candidate=None) -> Opt[tuple[pl.Path, int]]:
     idx = -1
     for idx, path in enumerate(paths):
         print(f'{idx}: {path}')
@@ -83,7 +89,7 @@ def get_user_ans(paths, new_candidate=None):
         return None
 
 
-def choose_costum_path(ref_path, only_existing=False):
+def choose_costum_path(ref_path: str, only_existing: bool = False) -> Opt[tuple[pl.Path, int]]:
     ref_path = pl.Path(ref_path)
     paths = srtd_lst_candidates(ref_path)
     if not only_existing:
@@ -96,11 +102,11 @@ def choose_costum_path(ref_path, only_existing=False):
 
 
 def filter_and_extract_img_from_cnt(
-    gray_img,
-    cnt,
+    gray_img: npt.NDArray[np.uint8],
+    cnt: npt.NDArray[int],
     area_filter: bool = True,
     w_h_filter: bool = True
-) -> npt.NDArray | None:
+) -> Opt[npt.NDArray[np.uint8]]:
     min_rect = cv2.minAreaRect(cnt)
     center, size, angle = min_rect
     area = size[0] * size[1]
@@ -118,14 +124,17 @@ def filter_and_extract_img_from_cnt(
     return None
 
 
-def save_img(path, gray_img):
+def save_img(path: str, gray_img: npt.NDArray[np.uint8]) -> None:
     timestring = get_current_time_string()
     retval = cv2.imwrite(str(pl.PurePath(path, f'img_{timestring}.jpg')), gray_img)
     if not retval:
         raise ValueError(f'could not write image: {retval}')
 
 
-def extract_img_from_cnt(gray_img, shape):
+def extract_img_from_cnt(
+    gray_img: npt.NDArray[np.uint8],
+    shape: npt.NDArray[int] | tuple[tuple[float], tuple[float], float]
+) -> npt.NDArray[np.uint8]:
     if not isinstance(shape, tuple):
         shape = cv2.minAreaRect(shape)
     cropped_img, _ = rotate_and_crop(gray_img, shape)
@@ -133,8 +142,11 @@ def extract_img_from_cnt(gray_img, shape):
     return small_img
 
 
-def filter_and_extract_norm_img_from_cnt(gray_img, con):
-    small_img = filter_and_extract_img_from_cnt(gray_img, con)
+def filter_and_extract_norm_img_from_cnt(
+    gray_img: npt.NDArray[np.uint8],
+    cnt: npt.NDArray[int]
+) -> Opt[npt.NDArray[np.uint8]]:
+    small_img = filter_and_extract_img_from_cnt(gray_img, cnt)
     if small_img is not None:
         small_img = small_img / 255
         return small_img
@@ -142,7 +154,7 @@ def filter_and_extract_norm_img_from_cnt(gray_img, con):
     return None
 
 
-def extract_cnts(img: npt.NDArray[np.uint8], sigma: float =0.33) -> cnt_container:
+def extract_cnts(img: npt.NDArray[np.uint8], sigma: float = .33) -> cnt_container:
     v = np.median(img)
     # ---- apply automatic Canny edge detection using the computed median----
     lower = int(max(0, (1.0 - sigma) * v))  # ---- lower threshold
@@ -152,36 +164,34 @@ def extract_cnts(img: npt.NDArray[np.uint8], sigma: float =0.33) -> cnt_containe
     return cnts
 
 
-# def extract_feature_pts(pos_cnt, factor: float = 0.04):
-def extract_feature_pts(pos_cnt, factor: float = 0.01):
+def extract_feature_pts(pos_cnt: npt.NDArray[int], factor: float = 0.01) -> npt.NDArray[int]:
     retval = cv2.arcLength(pos_cnt, True)
-    points = cv2.approxPolyDP(pos_cnt, factor * retval, True)
-    return points
+    return cv2.approxPolyDP(pos_cnt, factor * retval, True)
 
 
-def merge_points(points, max_merge_dist=4):
+def merge_points(pts: npt.NDArray[int], max_merge_dist: int = 4) -> list[npt.NDArray[int | float]]:
     to_merge = []
     checked_points_idx = []
     last_to_merge = False
-    for idx in range(len(points) - 1):
-        first_point = points[idx, 0]
+    for idx in range(len(pts) - 1):
+        first_point = pts[idx, 0]
         if idx not in checked_points_idx:
             to_merge_bundle = [first_point]
 
-            for idx2 in range(idx + 1, len(points)):
-                second_point = points[idx2, 0]
+            for idx2 in range(idx + 1, len(pts)):
+                second_point = pts[idx2, 0]
                 dist = np.abs(first_point - second_point)
 
                 if dist[0] < max_merge_dist and dist[1] < max_merge_dist:
                     to_merge_bundle.append(second_point)
                     checked_points_idx.append(idx2)
-                    if idx2 == len(points) - 1:
+                    if idx2 == len(pts) - 1:
                         last_to_merge = True
 
             to_merge.append(to_merge_bundle)
 
     if not last_to_merge:
-        to_merge.append([points[-1, 0]])
+        to_merge.append([pts[-1, 0]])
 
     filtered_points = []
     for to_merge_bundle in to_merge:
@@ -252,7 +262,7 @@ def rotate_and_crop(
     return cropped_rotated, rot_pts
 
 
-def get_rotation(min_area_angle, width_to_height):
+def get_rotation(min_area_angle: float, width_to_height: float) -> float:
     if width_to_height >= 1:
         min_rect_angle_deg = -1 * (90 - min_area_angle)
     else:
@@ -267,8 +277,8 @@ def sort_cnts(
 ) -> tuple[
     Opt[list[int]],
     Opt[list[int]],
-    Opt[list[float]],
-    Opt[list[float]],
+    Opt[list[tf.Tensor]],
+    Opt[list[tf.Tensor]],
     Opt[list[float]]
 ]:
     idxs = np.where(prediction >= 0.5)[0]
@@ -296,19 +306,19 @@ def filter_cnts(
     cnts: cnt_container,
     gray_img: npt.NDArray[np.uint8] = None,
     expected_pts: int = None
-) -> tuple[npt.NDArray[np.uint8], cnt_container, npt.NDArray[int]]:
+) -> tuple[npt.NDArray[np.uint8], cnt_container, npt.NDArray[float]]:
+    # noinspection PyTypeChecker
     small_imgs = []
-    filtered_cnts = []
+    # noinspection PyTypeChecker
+    filtered_cnts: cnt_container = []
+    # noinspection PyTypeChecker
+    hull_rot_pts = []
     center_list = []
     area_list = []
-    hull_rot_pts = []
-    too_close = False
-    skip = False
     for cnt in cnts:
         min_rect = cv2.minAreaRect(cnt)
         center, size, angle_deg = min_rect
         area = size[0] * size[1]
-
         if area < AREA_BORDER:
             continue
 
@@ -318,7 +328,6 @@ def filter_cnts(
             continue
 
         width_to_height = low_value / high_value
-
         if MIN_WIDTH_TO_HEIGHT < width_to_height < MAX_WIDTH_TO_HEIGHT:
             skip = False
             for c_point, a_point in zip(center_list, area_list):
@@ -353,7 +362,7 @@ def filter_cnts(
     return small_imgs, filtered_cnts, hull_rot_pts
 
 
-def more_pts_up(pts, center=None):
+def more_pts_up(pts: npt.NDArray[int | float], center: int = None) -> bool:
     if center is not None:
         y_max = center[1]
     else:
@@ -371,14 +380,14 @@ def more_pts_up(pts, center=None):
     return pts_down < pts_up
 
 
-def angle_x_axis(pt):
+def angle_x_axis(pt: npt.ArrayLike) -> float:
     angle_rad = np.arctan2(pt[0], pt[1])
     if angle_rad < 0:
         angle_rad += 2 * np.pi
     return angle_rad
 
 
-def get_max_dist_reference(pts, ref_up):
+def get_max_dist_reference(pts: npt.NDArray, ref_up: bool) -> Opt[npt.NDArray]:
     max_dist = 0
     min_idx = -1
     for idx, pt in enumerate(pts):
@@ -396,7 +405,7 @@ def get_max_dist_reference(pts, ref_up):
     return pts[min_idx]
 
 
-def rot_centered_pts(pts, ref_angle_rad):
+def rot_centered_pts(pts: npt.NDArray, ref_angle_rad: float) -> npt.NDArray[float]:
     rot_pts = np.zeros((len(pts), 2))
     for idx, pt in enumerate(pts):
         angle_rad = np.arctan2(pt[1], pt[0]) + ref_angle_rad
@@ -408,20 +417,30 @@ def rot_centered_pts(pts, ref_angle_rad):
     return rot_pts
 
 
-def sort_pts_by_angles(rot_pts, org_pts):
+def sort_pts_by_angles(
+    rot_pts: npt.NDArray,
+    org_pts: npt.NDArray
+) -> npt.NDArray:
     angles_rad = [angle_x_axis(pt) for pt in rot_pts]
     idx_sorted = np.argsort(angles_rad)
     return org_pts[idx_sorted]
 
 
-def sort_pt_biggest_dist_center(pts, ref_up, org_pts):
+def sort_pt_biggest_dist_center(
+    pts: npt.NDArray,
+    ref_up: bool,
+    org_pts: npt.NDArray
+) -> npt.NDArray:
     closest_y = get_max_dist_reference(pts, ref_up)
     ref_angle_rad = (np.pi / 2) - np.arctan2(closest_y[1], closest_y[0])
     rot_pts = rot_centered_pts(pts, ref_angle_rad)
     return sort_pts_by_angles(rot_pts, org_pts)
 
 
-def calc_rot_and_trans(homogr, mtx) -> tuple[npt.NDArray[float], npt.NDArray[float]]:
+def calc_rot_and_trans(
+    homogr: npt.NDArray,
+    mtx: npt.NDArray[float]
+) -> tuple[npt.NDArray[float], npt.NDArray[float]]:
     homogr = homogr.T
     h1 = homogr[0]
     h2 = homogr[1]
@@ -456,8 +475,8 @@ def est_cnts_in_img(
     tuple[
         Opt[npt.NDArray[int]],
         Opt[npt.NDArray[int]],
-        Opt[npt.NDArray[float]],
-        Opt[npt.NDArray[float]],
+        Opt[list[tf.Tensor]],
+        Opt[list[tf.Tensor]],
         Opt[npt.NDArray[int]]]
 ]:
     cnts = extract_cnts(gray_img)
@@ -503,29 +522,33 @@ def est_pose_in_img(
     points_printed: npt.NDArray[np.uint8],
     mtx,
     verbose: bool = False
-) -> Opt[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]:
-    result = est_cnts_in_img(gray_img, model, verbose=verbose)
-    if result is None:
+) -> Opt[list[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]]:
+    cnt_result = est_cnts_in_img(gray_img, model, verbose=verbose)
+    if cnt_result is None:
         return None
 
-    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = result
+    pos_cnts, neg_cnts, pos_preds, neg_preds, hull_rot_pts = cnt_result
 
     if pos_cnts is None:
         if verbose:
             print('no positive contour found')
-        result = None
+        # noinspection PyTypeChecker
+        cnt_result = None
 
-    if result is None:
+    if cnt_result is None:
         return None
 
-    idx = np.argmax(pos_pred[0])
-    best_cnt = pos_cnts[idx]
+    # noinspection PyTypeChecker
+    idx = np.argmax(pos_preds)  # list of ensors containing a single float being treated like floats
+    best_cnt: npt.NDArray[int] = pos_cnts[idx]
     best_hull_rot_pts = hull_rot_pts[idx]
-    result = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, mtx, verbose)
+    result: Opt[tuple[npt.NDArray[float], npt.NDArray[float]]] = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, mtx, verbose)
     if result is None:
         return None
-
-    return *result, best_cnt, pos_pred[idx][0]
+    R, T = result
+    # noinspection PyTypeChecker
+    pos_pred: float = pos_preds[idx][0]  # list of ensors containing a single float returns float
+    return [(R, T, best_cnt, pos_pred)]
 
 
 def est_poses_in_img(
@@ -535,25 +558,28 @@ def est_poses_in_img(
     mtx,
     verbose: bool = False
 ) -> Opt[list[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]]:
-    result = est_cnts_in_img(gray_img, model, verbose=verbose)
-    if result is None:
+    cnt_result = est_cnts_in_img(gray_img, model, verbose=verbose)
+    if cnt_result is None:
         return None
-    pos_cnts, neg_cnts, pos_pred, neg_pred, hull_rot_pts = result
+    pos_cnts, neg_cnts, pos_preds, neg_preds, hull_rot_pts = cnt_result
 
     if not len(pos_cnts):
         if verbose:
             print('no positive contour found')
         return None
 
-    all_ret_vals = [None] * len(pos_cnts)
+    all_ret_vals: list[
+        Opt[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]
+    ] = [None] * len(pos_cnts)
     for idx in range(len(pos_cnts)):
-        result = est_pose_of_cnt(pos_cnts[idx], points_printed, hull_rot_pts[idx], mtx, verbose)
-        if result is None:
+        cnt_result = est_pose_of_cnt(pos_cnts[idx], points_printed, hull_rot_pts[idx], mtx, verbose)
+        if cnt_result is None:
             if verbose:
                 print(f'could not estimate pose at {idx}')
-            all_ret_vals[idx] = None
         else:
-            all_ret_vals[idx] = *result, pos_cnts[idx], pos_pred[idx][0]
+            R, T = cnt_result
+            # noinspection PyTypeChecker
+            all_ret_vals[idx] = R, T, pos_cnts[idx], pos_preds[idx][0]
 
     return all_ret_vals
 

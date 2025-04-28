@@ -8,12 +8,12 @@ import traceback
 import numpy as np
 import cv2
 
-from main.conf.paths import PRINTED_PATH
-from main.conf.paths import CAM_CONFIG_PATH
-from main.conf.imgs import ABORT_VIDEO_KEYS
-from main.processing.model_handler import ModelHandler
-from main.processing.utils import est_pose_in_img
-from main.io.video import VideoCapture
+from detectarrow.conf.paths import PRINTED_PATH
+from detectarrow.conf.paths import CAM_CONFIG_PATH
+from detectarrow.conf.imgs import ABORT_VIDEO_KEYS
+from detectarrow.processing.model_handler import ModelHandler
+from detectarrow.processing.utils import est_pose_in_img
+from detectarrow.io.video import VideoCapture
 
 if __name__ == '__main__':
     cam_target = 0

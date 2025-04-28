@@ -14,13 +14,15 @@ from pathlib import PurePath
 from sklearn.metrics import classification_report
 
 import numpy.typing as npt
+from tensorflow.data import Dataset as ds
+from tensorflow.python.framework.ops import EagerTensor as eagert
 
-from main.conf.paths import DATASET_PATH
-from main.conf.paths import ARROWS_PATH
-from main.conf.paths import MODELS_PATH
-from main.conf.paths import MODEL_BNAME
-from main.conf.imgs import COMPARED_SIZE
-from main.processing.utils import get_newest_fname_in_path
+from detectarrow.conf.paths import DATASET_PATH
+from detectarrow.conf.paths import ARROWS_PATH
+from detectarrow.conf.paths import MODELS_PATH
+from detectarrow.conf.paths import MODEL_BNAME
+from detectarrow.conf.imgs import COMPARED_SIZE
+from detectarrow.processing.utils import get_newest_fname_in_path
 
 
 class ModelHandler:
@@ -28,7 +30,7 @@ class ModelHandler:
         self.reset()
 
     # noinspection PyAttributeOutsideInit
-    def reset(self):
+    def reset(self) -> None:
         self.train_ds = None
         self.val_ds = None
         self.model = None
@@ -36,7 +38,7 @@ class ModelHandler:
         self.images = None
         self.labels = None
 
-    def load_model(self, basename: str = None):
+    def load_model(self, basename: str = None) -> bool:
         if basename is None:
             newest_model = get_newest_fname_in_path(MODELS_PATH)
         else:
@@ -48,7 +50,7 @@ class ModelHandler:
         except OSError:
             return False
 
-    def save_model(self, basename: str = 'arrow_detection.keras'):
+    def save_model(self, basename: str = 'arrow_detection.keras') -> bool:
         if self.model is not None:
             filepath = str(PurePath(MODELS_PATH, basename))
             self.model.save(filepath)
@@ -57,7 +59,7 @@ class ModelHandler:
         else:
             return False
 
-    def build_model(self):
+    def build_model(self) -> None:
         self.model = Sequential([
             Input(shape=(68, 24, 1)),
             Rescaling(1. / 255),
@@ -75,7 +77,7 @@ class ModelHandler:
         )
         print(self.model.summary())
 
-    def load_datasets(self, dataset_path: str = DATASET_PATH):
+    def load_datasets(self, dataset_path: str = DATASET_PATH) -> None:
         self.train_ds = image_dataset_from_directory(
             dataset_path,
             label_mode='binary',
@@ -98,7 +100,7 @@ class ModelHandler:
             subset='validation',
         )
 
-    def train_model(self, epochs=10, train_ds=None, val_ds=None):
+    def train_model(self, epochs: int = 10, train_ds: ds = None, val_ds: ds = None) -> None:
         if train_ds is not None:
             self.train_ds = train_ds
         if val_ds is not None:
@@ -109,7 +111,7 @@ class ModelHandler:
             epochs=epochs
         )
 
-    def show_training_progress(self):
+    def show_training_progress(self) -> bool:
         if self.history is not None:
             loss_values = self.history.history.get('loss', None)
             val_loss_values = self.history.history.get('val_loss', None)
@@ -146,7 +148,7 @@ class ModelHandler:
         else:
             return False
 
-    def try_val_sample(self):
+    def try_val_sample(self) -> bool:
         if self.val_ds is not None:
             test_image = None
             for images, labels in self.val_ds.take(1):
@@ -164,14 +166,12 @@ class ModelHandler:
 
             else:
                 return False
-
         else:
             return False
 
-    def prepare_validation(self):
+    def prepare_validation(self) -> None:
         res_imgs = []
         res_labels = []
-
         for images, labels in self.val_ds:
             res_imgs.extend(images)
             res_labels.extend(labels)
@@ -179,7 +179,7 @@ class ModelHandler:
         self.images = np.array(res_imgs)
         self.labels = np.concatenate(res_labels, axis=0)
 
-    def classification_report(self):
+    def classification_report(self) -> bool:
         if self.model is not None:
             if self.images is None or self.labels is None:
                 self.prepare_validation()
@@ -190,22 +190,24 @@ class ModelHandler:
         else:
             return False
 
-    def do_quick_hack(self):
+    def tensorflow_import_hack(self) -> None:
         try:
             import tensorflow.keras
         except ImportError:
             from tensorflow import keras
             import tensorflow
-
             import sys
 
             tensorflow.keras = keras
             tensorflow.keras.backend = keras.backend
-
             sys.modules['tensorflow.keras'] = sys.modules['keras']
             sys.modules['tensorflow.keras.backend'] = 'keras hack'
 
-    def saliency(self, quick_hack=False):
+    def saliency_output_hack(self) -> None:
+        layers = [layer.name for layer in self.model.layers]
+        self.model.output_names = [layers[-1]]
+
+    def saliency(self, import_hack: bool = False) -> bool:
         if self.model is None:
             return False
 
@@ -230,20 +232,26 @@ class ModelHandler:
 
         saliency_part = np.asarray(saliency_part)
         labels = np.hstack((np.ones(5), np.zeros(5)))
-        # for i in saliency_part:
-        #     plt.imshow(i, cmap='gray')
-        #     plt.title(labels)
-        #     plt.show()
-
-        if quick_hack:
-            self.do_quick_hack()
+        if import_hack:
+            self.tensorflow_import_hack()
 
         from tf_keras_vis.utils.model_modifiers import ReplaceToLinear
         from tf_keras_vis.saliency import Saliency
 
         replace2linear = ReplaceToLinear()
 
-        def score_function(output):
+        def score_function(output: eagert) -> tuple[
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32,
+            np.float32
+        ]:
             return (
                 output[0][0],
                 output[1][0],
@@ -257,12 +265,12 @@ class ModelHandler:
                 output[9][0]
             )
 
-        self.another_hack()  # https://github.com/onnx/tensorflow-onnx/issues/2319
-
-        saliency = Saliency(self.model,
-                            model_modifier=replace2linear,
-                            clone=False)
-
+        self.saliency_output_hack()  # https://github.com/onnx/tensorflow-onnx/issues/2319
+        saliency = Saliency(
+            self.model,
+            model_modifier=replace2linear,
+            clone=False
+        )
         saliency_map = saliency(score_function, saliency_part)
         # image_titles = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
         f, ax = plt.subplots(nrows=2, ncols=len(labels), figsize=(12, 4))
@@ -274,6 +282,4 @@ class ModelHandler:
             ax[1, i].axis('off')
         plt.tight_layout()
         plt.show()
-
-    def another_hack(self):
-        self.model.output_names = ['dense_1']
+        return True

@@ -7,11 +7,11 @@ import traceback
 import numpy as np
 import cv2
 
-from main.conf.paths import EXAMPLES_PATH
-from main.conf.paths import PRINTED_PATH
-from main.conf.paths import CAM_CONFIG_PATH
-from main.processing.model_handler import ModelHandler
-from main.processing.utils import est_poses_in_img
+from detectarrow.conf.paths import EXAMPLES_PATH
+from detectarrow.conf.paths import PRINTED_PATH
+from detectarrow.conf.paths import CAM_CONFIG_PATH
+from detectarrow.processing.model_handler import ModelHandler
+from detectarrow.processing.utils import est_poses_in_img
 
 
 if __name__ == '__main__':

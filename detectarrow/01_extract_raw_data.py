@@ -1,6 +1,6 @@
 #!/bin/env python3
 
-from main.processing.preparation import Preparation
+from detectarrow.processing.preparation import Preparation
 
 
 if __name__ == '__main__':
