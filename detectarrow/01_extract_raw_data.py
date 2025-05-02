@@ -6,7 +6,7 @@ from detectarrow.processing.preparation import Preparation
 if __name__ == '__main__':
     preparator = Preparation()
     preparator.extract_raw_pos_imgs_from_videos()
-    preparator.extract_pos_imgs_from_imgs()
+    preparator.extract_pre_aug_imgs_from_big_imgs()
     preparator.aug_imgs_and_build_pos_dataset()
 
     preparator.extract_neg_candidates()

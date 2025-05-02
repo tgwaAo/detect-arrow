@@ -19,7 +19,7 @@ from typing import Optional as Opt
 from typing import Union
 
 from detectarrow.conf.paths import RAW_VIDS_PATH
-from detectarrow.conf.paths import RAW_POS_IMGS_PATH
+from detectarrow.conf.paths import RAW_IMGS_PATH
 from detectarrow.conf.paths import ORIGINAL_POS_PATH
 from detectarrow.conf.paths import ORIGINAL_POS_SUB_PATH
 from detectarrow.conf.paths import ORIGINAL_NEG_PATH
@@ -27,7 +27,7 @@ from detectarrow.conf.paths import ORIGINAL_NEG_SUB_PATH
 from detectarrow.conf.paths import DATASET_PATH
 from detectarrow.conf.paths import ARROWS_PATH
 from detectarrow.conf.paths import ANYTHING_PATH
-from detectarrow.conf.paths import RAW_NEG_IMGS_PATH
+from detectarrow.conf.paths import BIG_NEG_IMGS_PATH
 from detectarrow.conf.paths import UNUSED_NEG_PATH
 from detectarrow.conf.imgs import Colors
 from detectarrow.conf.imgs import TARGET_SIZE
@@ -81,7 +81,7 @@ class Preparation:
 
         if single_choice:
             self.path_idx = nbr
-            self.ext_imgs_path = create_sub_path_with_nbr(RAW_POS_IMGS_PATH, nbr)
+            self.ext_imgs_path = create_sub_path_with_nbr(RAW_IMGS_PATH, nbr)
             self.org_pos_path = create_sub_path_with_nbr(ORIGINAL_POS_PATH, nbr)
             path = pl.PurePath(self.org_pos_path)
             self.org_pos_sub_path = str(path / path.name)
@@ -91,7 +91,7 @@ class Preparation:
             self.dataset_path = DATASET_PATH  # choosing another path results in a more difficult training setup
 
         else:
-            result = choose_costum_path(RAW_POS_IMGS_PATH)
+            result = choose_costum_path(RAW_IMGS_PATH)
             if result is None:
                 return False
             self.ext_imgs_path, _ = result
@@ -158,7 +158,7 @@ class Preparation:
             nth_frame: int = FRAMES_TILL_IMAGE_EXTRACTION,
             ext_imgs_path: Opt[str] = None
     ) -> None:
-        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_POS_IMGS_PATH)
+        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_IMGS_PATH)
         pl.Path(self.ext_imgs_path).mkdir(exist_ok=True)
 
         cap = cv2.VideoCapture(video_fname)
@@ -190,7 +190,7 @@ class Preparation:
             ext_imgs_path: Opt[str] = None
     ) -> None:
         self.videos_path = handle_options(videos_path, self.videos_path, RAW_VIDS_PATH)
-        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_POS_IMGS_PATH)
+        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_IMGS_PATH)
 
         for fname in glob(str(PurePath(self.videos_path, '*'))):
             self.extract_raw_pos_imgs_from_video(fname, nth_frame)
@@ -214,7 +214,7 @@ class Preparation:
         self.model.trainable = False
         return True
 
-    def extract_pos_imgs_from_imgs(
+    def extract_pre_aug_imgs_from_big_imgs(
         self,
         use_model: bool = False,
         min_area_cnt: int = AREA_BORDER - 10,
@@ -223,7 +223,7 @@ class Preparation:
         org_pos_sub_path: Opt[str] = None,
         org_neg_sub_path: Opt[str] = None
     ) -> None:
-        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_POS_IMGS_PATH)
+        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_IMGS_PATH)
         self.org_pos_sub_path = handle_options(org_pos_sub_path, self.org_pos_sub_path, ORIGINAL_POS_SUB_PATH)
         pl.Path(self.org_pos_sub_path).mkdir(parents=True, exist_ok=True)
         if org_neg_sub_path:
@@ -272,7 +272,7 @@ class Preparation:
                 if neg_cnts is not None:
                     for neg_cnt in neg_cnts:
                         small_img = extract_img_from_cnt(gray_img, neg_cnt)
-                        save_img(org_neg_sub_path, small_img)
+                        save_img(self.org_neg_sub_path, small_img)
 
             elif key == Keys.Y:
                 if len(pos_cnts) == 1:
@@ -383,7 +383,7 @@ class Preparation:
         return True
 
     def extract_neg_candidates(self) -> None:
-        path = pl.Path(RAW_NEG_IMGS_PATH)
+        path = pl.Path(BIG_NEG_IMGS_PATH)
         path.mkdir(exist_ok=True)
         pl.Path(UNUSED_NEG_PATH).mkdir(exist_ok=True)
 

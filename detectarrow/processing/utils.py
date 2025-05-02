@@ -14,7 +14,7 @@ from typing import Union
 import tensorflow as tf
 
 from detectarrow.conf.paths import RAW_VIDS_PATH
-from detectarrow.conf.paths import RAW_POS_IMGS_PATH
+from detectarrow.conf.paths import RAW_IMGS_PATH
 from detectarrow.conf.imgs import MIN_WIDTH_TO_HEIGHT
 from detectarrow.conf.imgs import MAX_WIDTH_TO_HEIGHT
 from detectarrow.conf.imgs import SIMILAR_AREA_PERCENT
@@ -539,15 +539,15 @@ def est_pose_in_img(
         return None
 
     # noinspection PyTypeChecker
-    idx = np.argmax(pos_preds)  # list of ensors containing a single float being treated like floats
+    idx = np.argmax(pos_preds)  # list of tensors being treated like list[tuple[float]]
     best_cnt: npt.NDArray[int] = pos_cnts[idx]
     best_hull_rot_pts = hull_rot_pts[idx]
-    result: Opt[tuple[npt.NDArray[float], npt.NDArray[float]]] = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, mtx, verbose)
+    result = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, mtx, verbose)
     if result is None:
         return None
     R, T = result
     # noinspection PyTypeChecker
-    pos_pred: float = pos_preds[idx][0]  # list of ensors containing a single float returns float
+    pos_pred: float = pos_preds[idx][0]  # list of tensors being treated like list[tuple[float]]
     return [(R, T, best_cnt, pos_pred)]
 
 
