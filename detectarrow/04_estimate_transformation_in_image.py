@@ -15,12 +15,18 @@ from detectarrow.processing.utils import est_poses_in_img
 
 
 if __name__ == '__main__':
-    handler = ModelHandler()
-    ret = handler.load_model()
-    if not ret:
+    model_handler = ModelHandler()
+    try:
+        model_handler.load_model()
+    except ValueError:
+        print('could not load model')
         exit(1)
-    model = handler.model
-    handler.model = None
+    except Exception as e:
+        print(e)
+        exit(2)
+
+    model = model_handler.model
+    model_handler.model = None
     model.trainable = False
 
     printed_fname = str(pl.PurePath(PRINTED_PATH, 'coords_of_arrow.txt'))

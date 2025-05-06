@@ -4,13 +4,11 @@ import numpy as np
 import cv2
 
 import numpy.typing as npt
-from typing import Optional as Opt, Any
-from typing import TypeAlias
+from typing import Optional as Opt
 from typing import Union
 from keras.models import Sequential
 from numpy import ndarray, dtype
 from tensorflow.python.framework.ops import EagerTensor
-from typing import Union
 import tensorflow as tf
 
 from detectarrow.conf.paths import RAW_VIDS_PATH
@@ -84,7 +82,6 @@ def get_user_ans(paths: list[pl.Path], new_candidate=None) -> Opt[tuple[pl.Path,
             return paths[ans], ans
         else:
             return new_candidate, idx + 1
-
     else:
         return None
 
@@ -97,7 +94,6 @@ def choose_costum_path(ref_path: str, only_existing: bool = False) -> Opt[tuple[
         new_candidate = pl.Path(f'{ref_path.parent}', f'{ref_path.name}-{nbr_next_path}')
     else:
         new_candidate = None
-
     return get_user_ans(paths, new_candidate)
 
 
@@ -120,7 +116,6 @@ def filter_and_extract_img_from_cnt(
 
     if MIN_WIDTH_TO_HEIGHT < width_to_height < MAX_WIDTH_TO_HEIGHT or not w_h_filter:
         return extract_img_from_cnt(gray_img, min_rect)
-
     return None
 
 
@@ -128,7 +123,7 @@ def save_img(path: str, gray_img: npt.NDArray[np.uint8]) -> None:
     timestring = get_current_time_string()
     retval = cv2.imwrite(str(pl.PurePath(path, f'img_{timestring}.jpg')), gray_img)
     if not retval:
-        raise ValueError(f'could not write image: {retval}')
+        raise IOError(f'could not write image: {retval}')
 
 
 def extract_img_from_cnt(
@@ -154,7 +149,7 @@ def filter_and_extract_norm_img_from_cnt(
     return None
 
 
-def extract_cnts(img: npt.NDArray[np.uint8], sigma: float = .33) -> cnt_container:
+def extract_cnts(img: npt.NDArray[np.uint8], sigma: float = .33) -> tuple[npt.NDArray[int], ...]:
     v = np.median(img)
     # ---- apply automatic Canny edge detection using the computed median----
     lower = int(max(0, (1.0 - sigma) * v))  # ---- lower threshold
@@ -169,7 +164,7 @@ def extract_feature_pts(pos_cnt: npt.NDArray[int], factor: float = 0.01) -> npt.
     return cv2.approxPolyDP(pos_cnt, factor * retval, True)
 
 
-def merge_points(pts: npt.NDArray[int], max_merge_dist: int = 4) -> list[npt.NDArray[int | float]]:
+def merge_points(pts: npt.NDArray[int], max_merge_dist: int = 4) -> list[npt.NDArray[float]]:
     to_merge = []
     checked_points_idx = []
     last_to_merge = False
@@ -218,11 +213,8 @@ def rotate_and_crop(
 
     size_of_transformed_image = max(min_area_rect[1])
     min_needed_height = int(np.sqrt(2 * np.power(size_of_transformed_image, 2)))
-
     width_to_height = min_area_rect[1][0] / min_area_rect[1][1]
-
     min_rect_angle_deg = get_rotation(min_area_rect[2], width_to_height)
-
     size = (min_needed_height, min_needed_height)
 
     x_coordinates_of_box = box[:, 0]
@@ -238,11 +230,17 @@ def rotate_and_crop(
     cropped = cv2.warpAffine(cropped, M, size)
 
     if width_to_height >= 1:
-        cropped_rotated = cv2.getRectSubPix(cropped, (int(factor * height), int(factor * width)),
-                                            (size[0] / 2, size[1] / 2))
+        cropped_rotated = cv2.getRectSubPix(
+            cropped,
+            patchSize=(int(factor * height), int(factor * width)),
+            center=(size[0] / 2, size[1] / 2)
+        )
     else:
-        cropped_rotated = cv2.getRectSubPix(cropped, (int(factor * width), int(factor * height)),
-                                            (size[0] / 2, size[1] / 2))
+        cropped_rotated = cv2.getRectSubPix(
+            cropped,
+            patchSize=(int(factor * width), int(factor * height)),
+            center=(size[0] / 2, size[1] / 2)
+        )
 
     if cnt is not None:
         hull_pts = extract_feature_pts(cnt)
@@ -258,7 +256,6 @@ def rotate_and_crop(
 
     else:
         rot_pts = None
-
     return cropped_rotated, rot_pts
 
 
@@ -306,11 +303,11 @@ def filter_cnts(
     cnts: cnt_container,
     gray_img: npt.NDArray[np.uint8] = None,
     expected_pts: int = None
-) -> tuple[npt.NDArray[np.uint8], cnt_container, npt.NDArray[float]]:
+) -> tuple[npt.NDArray[np.uint8], list[npt.NDArray[int], ...], npt.NDArray[float]]:
     # noinspection PyTypeChecker
     small_imgs = []
     # noinspection PyTypeChecker
-    filtered_cnts: cnt_container = []
+    filtered_cnts: list[npt.NDArray[int], ...] = []
     # noinspection PyTypeChecker
     hull_rot_pts = []
     center_list = []
@@ -362,7 +359,7 @@ def filter_cnts(
     return small_imgs, filtered_cnts, hull_rot_pts
 
 
-def more_pts_up(pts: npt.NDArray[int | float], center: int = None) -> bool:
+def more_pts_up(pts: npt.ArrayLike, center: int = None) -> bool:
     if center is not None:
         y_max = center[1]
     else:
@@ -387,7 +384,7 @@ def angle_x_axis(pt: npt.ArrayLike) -> float:
     return angle_rad
 
 
-def get_max_dist_reference(pts: npt.NDArray, ref_up: bool) -> Opt[npt.NDArray]:
+def get_max_dist_reference(pts: npt.NDArray[float], ref_up: bool) -> Opt[npt.NDArray[float]]:
     max_dist = 0
     min_idx = -1
     for idx, pt in enumerate(pts):
@@ -405,7 +402,7 @@ def get_max_dist_reference(pts: npt.NDArray, ref_up: bool) -> Opt[npt.NDArray]:
     return pts[min_idx]
 
 
-def rot_centered_pts(pts: npt.NDArray, ref_angle_rad: float) -> npt.NDArray[float]:
+def rot_centered_pts(pts: npt.ArrayLike, ref_angle_rad: float) -> npt.NDArray[float]:
     rot_pts = np.zeros((len(pts), 2))
     for idx, pt in enumerate(pts):
         angle_rad = np.arctan2(pt[1], pt[0]) + ref_angle_rad
@@ -418,19 +415,19 @@ def rot_centered_pts(pts: npt.NDArray, ref_angle_rad: float) -> npt.NDArray[floa
 
 
 def sort_pts_by_angles(
-    rot_pts: npt.NDArray,
-    org_pts: npt.NDArray
-) -> npt.NDArray:
+    rot_pts: npt.ArrayLike,
+    org_pts: npt.ArrayLike
+) -> npt.ArrayLike:
     angles_rad = [angle_x_axis(pt) for pt in rot_pts]
     idx_sorted = np.argsort(angles_rad)
     return org_pts[idx_sorted]
 
 
 def sort_pt_biggest_dist_center(
-    pts: npt.NDArray,
+    pts: npt.ArrayLike,
     ref_up: bool,
-    org_pts: npt.NDArray
-) -> npt.NDArray:
+    org_pts: npt.ArrayLike
+) -> npt.ArrayLike:
     closest_y = get_max_dist_reference(pts, ref_up)
     ref_angle_rad = (np.pi / 2) - np.arctan2(closest_y[1], closest_y[0])
     rot_pts = rot_centered_pts(pts, ref_angle_rad)
@@ -490,6 +487,7 @@ def est_cnts_in_img(
 
     prediction = model(filtered_images)
 
+    # noinspection PyTypeChecker
     return sort_cnts(prediction, cnts, hull_rot_pts)
 
 
@@ -522,13 +520,12 @@ def est_pose_in_img(
     points_printed: npt.NDArray[np.uint8],
     mtx,
     verbose: bool = False
-) -> Opt[list[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]]:
+) -> Opt[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]:
     cnt_result = est_cnts_in_img(gray_img, model, verbose=verbose)
     if cnt_result is None:
         return None
 
     pos_cnts, neg_cnts, pos_preds, neg_preds, hull_rot_pts = cnt_result
-
     if pos_cnts is None:
         if verbose:
             print('no positive contour found')
@@ -548,7 +545,7 @@ def est_pose_in_img(
     R, T = result
     # noinspection PyTypeChecker
     pos_pred: float = pos_preds[idx][0]  # list of tensors being treated like list[tuple[float]]
-    return [(R, T, best_cnt, pos_pred)]
+    return R, T, best_cnt, pos_pred
 
 
 def est_poses_in_img(
@@ -562,7 +559,6 @@ def est_poses_in_img(
     if cnt_result is None:
         return None
     pos_cnts, neg_cnts, pos_preds, neg_preds, hull_rot_pts = cnt_result
-
     if not len(pos_cnts):
         if verbose:
             print('no positive contour found')

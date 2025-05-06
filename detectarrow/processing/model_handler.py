@@ -13,6 +13,7 @@ import pathlib as pl
 from pathlib import PurePath
 from sklearn.metrics import classification_report
 
+from typing import Optional as Opt
 import numpy.typing as npt
 from tensorflow.data import Dataset as ds
 from tensorflow.python.framework.ops import EagerTensor as eagert
@@ -38,26 +39,19 @@ class ModelHandler:
         self.images = None
         self.labels = None
 
-    def load_model(self, basename: str = None) -> bool:
-        if basename is None:
-            newest_model = get_newest_fname_in_path(MODELS_PATH)
+    def load_model(self, model_bname: Opt[str] = None) -> None:
+        if model_bname is None:
+            model_fname = get_newest_fname_in_path(MODELS_PATH)
         else:
-            newest_model = str(pl.PurePath(MODELS_PATH, basename))
+            model_fname = str(PurePath(MODELS_PATH, model_bname))
+        self.model = load_model(model_fname)
 
-        try:
-            self.model = load_model(newest_model)
-            return True
-        except OSError:
-            return False
-
-    def save_model(self, basename: str = 'arrow_detection.keras') -> bool:
-        if self.model is not None:
-            filepath = str(PurePath(MODELS_PATH, basename))
-            self.model.save(filepath)
-            return True
-
+    def save_model(self, model_bname: str = None) -> None:
+        if model_bname is None:
+            model_fname = str(PurePath(MODELS_PATH, MODEL_BNAME))  # only overwrite default by default
         else:
-            return False
+            model_fname = str(PurePath(MODELS_PATH, model_bname))
+        self.model.save(model_fname)
 
     def build_model(self) -> None:
         self.model = Sequential([
@@ -75,17 +69,16 @@ class ModelHandler:
             optimizer='adam',
             metrics=['accuracy']
         )
-        print(self.model.summary())
 
-    def load_datasets(self, dataset_path: str = DATASET_PATH) -> None:
+    def load_datasets(self, dataset_path: str = DATASET_PATH, seed: int = 42, val_split: float = 0.2) -> None:
         self.train_ds = image_dataset_from_directory(
             dataset_path,
             label_mode='binary',
             color_mode='grayscale',
             batch_size=1_000,
             image_size=COMPARED_SIZE,
-            seed=42,
-            validation_split=0.2,
+            seed=seed,
+            validation_split=val_split,
             subset='training',
         )
         self.val_ds = image_dataset_from_directory(
@@ -94,9 +87,9 @@ class ModelHandler:
             color_mode='grayscale',
             batch_size=1_000,
             image_size=COMPARED_SIZE,
-            seed=42,
+            seed=seed,
             shuffle=True,
-            validation_split=0.2,
+            validation_split=val_split,
             subset='validation',
         )
 
@@ -111,63 +104,51 @@ class ModelHandler:
             epochs=epochs
         )
 
-    def show_training_progress(self) -> bool:
-        if self.history is not None:
-            loss_values = self.history.history.get('loss', None)
-            val_loss_values = self.history.history.get('val_loss', None)
-            plt_epochs = range(1, (len(loss_values) + 1))
+    def show_training_progress(self) -> None:
+        loss_values = self.history.history.get('loss', None)
+        val_loss_values = self.history.history.get('val_loss', None)
+        plt_epochs = range(1, (len(loss_values) + 1))
 
-            if val_loss_values:
-                line1 = plt.plot(plt_epochs, val_loss_values, label='Validation/Test Loss')
-                plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
-            if loss_values:
-                line2 = plt.plot(plt_epochs, loss_values, label='Training Loss')
-                plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
-            plt.xlabel('Epochs')
-            plt.ylabel('Loss')
-            plt.grid(True)
-            plt.legend()
-            plt.show()
+        if val_loss_values:
+            line1 = plt.plot(plt_epochs, val_loss_values, label='Validation/Test Loss')
+            plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
+        if loss_values:
+            line2 = plt.plot(plt_epochs, loss_values, label='Training Loss')
+            plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
+        plt.xlabel('Epochs')
+        plt.ylabel('Loss')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
 
-            acc_values = self.history.history.get('accuracy', None)
-            val_acc_values = self.history.history.get('val_accuracy', None)
+        acc_values = self.history.history.get('accuracy', None)
+        val_acc_values = self.history.history.get('val_accuracy', None)
 
-            if val_acc_values:
-                line1 = plt.plot(plt_epochs, val_acc_values, label='Validation/Test Accuracy')
-                plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
-            if acc_values:
-                line2 = plt.plot(plt_epochs, acc_values, label='Training Accuracy')
-                plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
-            plt.xlabel('Epochs')
-            plt.ylabel('Accuracy')
-            plt.grid(True)
-            plt.legend()
-            plt.show()
-            return True
+        if val_acc_values:
+            line1 = plt.plot(plt_epochs, val_acc_values, label='Validation/Test Accuracy')
+            plt.setp(line1, linewidth=2.0, marker='+', markersize=10.0)
+        if acc_values:
+            line2 = plt.plot(plt_epochs, acc_values, label='Training Accuracy')
+            plt.setp(line2, linewidth=2.0, marker='4', markersize=10.0)
+        plt.xlabel('Epochs')
+        plt.ylabel('Accuracy')
+        plt.grid(True)
+        plt.legend()
+        plt.show()
 
-        else:
-            return False
+    def try_val_sample(self) -> None:
+        test_image = None
+        test_label = None
+        for images, labels in self.val_ds.take(1):
+            test_image = images[0].numpy()
+            test_label = labels[0].numpy()
+            break
 
-    def try_val_sample(self) -> bool:
-        if self.val_ds is not None:
-            test_image = None
-            for images, labels in self.val_ds.take(1):
-                test_image = images[0].numpy()
-                test_label = labels[0].numpy()
-                break
-
-            if test_image is not None:
-                prediction = self.model.predict(test_image[None])
-                print(f'prediction:{prediction[0][0]:.2f}')
-                print(f'real:{test_label}')
-                plt.imshow(test_image, cmap='gray')
-                plt.show()
-                return True
-
-            else:
-                return False
-        else:
-            return False
+        prediction = self.model.predict(test_image[None])
+        print(f'prediction:{prediction[0][0]:.2f}')
+        print(f'real:{test_label}')
+        plt.imshow(test_image, cmap='gray')
+        plt.show()
 
     def prepare_validation(self) -> None:
         res_imgs = []
@@ -179,16 +160,9 @@ class ModelHandler:
         self.images = np.array(res_imgs)
         self.labels = np.concatenate(res_labels, axis=0)
 
-    def classification_report(self) -> bool:
-        if self.model is not None:
-            if self.images is None or self.labels is None:
-                self.prepare_validation()
-            predictions = (self.model.predict(self.images) > 0.5).astype("int32")
-            print(classification_report(self.labels, predictions))
-            return True
-
-        else:
-            return False
+    def classification_report(self) -> None:
+        predictions = (self.model.predict(self.images) > 0.5).astype("int32")
+        print(classification_report(self.labels, predictions))
 
     def tensorflow_import_hack(self) -> None:
         try:
@@ -207,13 +181,7 @@ class ModelHandler:
         layers = [layer.name for layer in self.model.layers]
         self.model.output_names = [layers[-1]]
 
-    def saliency(self, import_hack: bool = False) -> bool:
-        if self.model is None:
-            return False
-
-        if self.images is None or self.labels is None:
-            self.prepare_validation()
-
+    def saliency(self, import_hack: bool = False) -> None:
         saliency_part = [0] * 10
         counter = 0
         for num in range(len(self.labels)):
@@ -282,4 +250,3 @@ class ModelHandler:
             ax[1, i].axis('off')
         plt.tight_layout()
         plt.show()
-        return True

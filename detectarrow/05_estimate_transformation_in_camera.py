@@ -44,17 +44,23 @@ if __name__ == '__main__':
     mtx_fname = str(pl.PurePath(CAM_CONFIG_PATH, 'mtx.txt'))
     mtx = np.loadtxt(mtx_fname)
 
-    handler = ModelHandler()
-    ret = handler.load_model()
-    if not ret:
+    model_handler = ModelHandler()
+    try:
+        model_handler.load_model()
+    except ValueError:
+        print('could not load model')
         exit(1)
-    model = handler.model
-    handler.model = None
+    except Exception as e:
+        print(e)
+        exit(2)
+
+    model = model_handler.model
+    model_handler.model = None
     model.trainable = False
 
     print(f'using camera target {cam_target}')
     cap = VideoCapture(cam_target, cam_width, cam_height, drop_if_full=False)
-    if not cap.isOpened():
+    if not cap.is_opened():
         cap.release()
         exit(1)
 

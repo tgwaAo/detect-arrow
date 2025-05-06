@@ -25,28 +25,35 @@ def get_nbr_of_imgs_for_aug(path: str, text: str):
 
 
 if __name__ == '__main__':
-    default_model_fname = str(pl.PurePath(MODELS_PATH, MODEL_BNAME))
     preparator = Preparation()
-    result = preparator.choose_costum_paths()
-    if not result:
-        exit(1)
-
+    preparator.choose_costum_paths()
     preparator.extract_raw_pos_imgs_from_videos()
-    preparator.load_model_for_classification(default_model_fname)
+    try:
+        preparator.load_model_for_classification()
+    except ValueError:
+        print(f'could not load model {default_model_fname}')
+        exit(2)
+    except Exception as e:
+        print(e)
+        exit(3)
+
     preparator.extract_pre_aug_imgs_from_big_imgs(use_model=True)
 
-    pos_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_pos_sub_path, 'positive')
-    neg_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_neg_sub_path, 'negative')
-    _ = preparator.aug_imgs_and_build_pos_dataset(roughly_created_size=pos_roughly_created_size)
-    _ = preparator.aug_imgs_and_build_neg_dataset(roughly_created_size=neg_roughly_created_size)
-
-    saved_bname = pl.PurePath(MODEL_BNAME)
-    saved_bname = f'{saved_bname.stem}_{preparator.path_idx}{saved_bname.suffix}'
-    model_handler = ModelHandler()
-    model_handler.load_model()
-    model_handler.load_datasets()
+    # pos_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_pos_sub_path, 'positive')
+    # neg_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_neg_sub_path, 'negative')
+    # preparator.aug_imgs_and_build_pos_dataset(roughly_created_size=pos_roughly_created_size)
+    # preparator.aug_imgs_and_build_neg_dataset(roughly_created_size=neg_roughly_created_size)
+    #
+    # default_model_bname = pl.PurePath(MODEL_BNAME)
+    # saved_bname = pl.PurePath(f'{default_model_bname.stem}_{preparator.path_idx}{default_model_bname.suffix}')
+    #
+    # model_handler = ModelHandler()
+    # model_handler.load_datasets()
+    # model_handler.load_model()
     # model_handler.train_model(epochs=5)
-    # model_handler.save_model(saved_bname)
-    model_handler.classification_report()
-    model_handler.saliency(import_hack=True)
+    # model_handler.save_model(str(saved_bname))
+    # model_handler.show_training_progress()
+    # model_handler.prepare_validation()
+    # model_handler.classification_report()
+    # model_handler.saliency(import_hack=True)
 

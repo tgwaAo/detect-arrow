@@ -60,7 +60,7 @@ class VideoCapture:
             img = None
         return ret, img
 
-    def isOpened(self) -> bool:
+    def is_opened(self) -> bool:
         with self.lock:
             ret = self.cap.isOpened()
         return ret
@@ -70,7 +70,7 @@ class VideoCapture:
             self.cap.set(*args)
 
     def release(self) -> None:
-        if self.isOpened():
+        if self.is_opened():
             self.stop_cam_thread.set()
             self.t.join()
         self.cap.release()
