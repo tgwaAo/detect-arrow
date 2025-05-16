@@ -13,16 +13,7 @@ from detectarrow.conf.paths import DATASET_PATH
 from detectarrow.conf.imgs import COMPARED_SIZE
 from detectarrow.processing.preparation import Preparation
 from detectarrow.processing.model_handler import ModelHandler
-
-
-def get_nbr_of_imgs_for_aug(path: str, text: str):
-    nbr_files = len(list(pl.Path(path).iterdir()))
-    print(f'got {nbr_files} files in {path}')
-    ans = input(f'roughly created size for {text} dataset [None] >>')
-    if ans.isdigit():
-        return int(ans)
-    return None
-
+from detectarrow.processing.utils import get_nbr_of_imgs_for_aug
 
 if __name__ == '__main__':
     preparator = Preparation()
@@ -38,22 +29,22 @@ if __name__ == '__main__':
         exit(3)
 
     preparator.extract_pre_aug_imgs_from_big_imgs(use_model=True)
+    preparator.model = None
 
-    # pos_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_pos_sub_path, 'positive')
-    # neg_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_neg_sub_path, 'negative')
-    # preparator.aug_imgs_and_build_pos_dataset(roughly_created_size=pos_roughly_created_size)
-    # preparator.aug_imgs_and_build_neg_dataset(roughly_created_size=neg_roughly_created_size)
-    #
-    # default_model_bname = pl.PurePath(MODEL_BNAME)
-    # saved_bname = pl.PurePath(f'{default_model_bname.stem}_{preparator.path_idx}{default_model_bname.suffix}')
-    #
-    # model_handler = ModelHandler()
-    # model_handler.load_datasets()
-    # model_handler.load_model()
-    # model_handler.train_model(epochs=5)
-    # model_handler.save_model(str(saved_bname))
-    # model_handler.show_training_progress()
-    # model_handler.prepare_validation()
-    # model_handler.classification_report()
-    # model_handler.saliency(import_hack=True)
+    pos_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_pos_sub_path, 'positive')
+    neg_roughly_created_size = get_nbr_of_imgs_for_aug(preparator.org_neg_sub_path, 'negative')
+    preparator.aug_imgs_and_build_pos_dataset(roughly_created_size=pos_roughly_created_size)
+    preparator.aug_imgs_and_build_neg_dataset(roughly_created_size=neg_roughly_created_size)
 
+    default_model_bname = pl.PurePath(MODEL_BNAME)
+    saved_bname = pl.PurePath(f'{default_model_bname.stem}_{preparator.path_idx}{default_model_bname.suffix}')
+
+    model_handler = ModelHandler()
+    model_handler.load_dataset()
+    model_handler.load_model()
+    model_handler.train_model(epochs=5)
+    model_handler.save_model(str(saved_bname))
+    model_handler.show_training_progress()
+    model_handler.prepare_validation()
+    model_handler.classification_report()
+    model_handler.saliency(import_hack=True)

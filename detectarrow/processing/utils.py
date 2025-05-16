@@ -38,6 +38,15 @@ def get_current_time_string() -> str:
     return datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S-%f')
 
 
+def get_nbr_of_imgs_for_aug(path: str, text: str):
+    nbr_files = len(list(pl.Path(path).iterdir()))
+    print(f'got {nbr_files} files in {path}')
+    ans = input(f'roughly created size for {text} dataset [None] >>')
+    if ans.isdigit():
+        return int(ans)
+    return None
+
+
 def create_sub_path_with_nbr(path: str, nbr: int) -> str:
     path = pl.PurePath(path)
     return str(path.parent / f'{path.name}-{nbr}')
@@ -66,22 +75,23 @@ def srtd_lst_candidates(ref_path: pl.Path) -> list[pl.Path]:
     return paths
 
 
-def get_user_ans(paths: list[pl.Path], new_candidate=None) -> Opt[tuple[pl.Path, int]]:
-    idx = -1
-    for idx, path in enumerate(paths):
-        print(f'{idx}: {path}')
+def get_user_ans_path(paths: list[pl.Path], new_candidate=None) -> Opt[tuple[pl.Path, int]]:
+    nbr_path = -1
+    for path in paths:
+        nbr_path = costum_sort(paths[-1])
+        print(f'{nbr_path}: {path}')
 
     if new_candidate:
         print('new candidate')
-        print(f'{idx + 1}: {new_candidate}')
+        print(f'{nbr_path + 1}: {new_candidate}')
 
     ans = input('choose number [default:none] >>')
     if ans.isdigit():
         ans = int(ans)
-        if ans <= idx:
+        if ans <= nbr_path:
             return paths[ans], ans
         else:
-            return new_candidate, idx + 1
+            return new_candidate, nbr_path + 1
     else:
         return None
 
@@ -94,7 +104,7 @@ def choose_costum_path(ref_path: str, only_existing: bool = False) -> Opt[tuple[
         new_candidate = pl.Path(f'{ref_path.parent}', f'{ref_path.name}-{nbr_next_path}')
     else:
         new_candidate = None
-    return get_user_ans(paths, new_candidate)
+    return get_user_ans_path(paths, new_candidate)
 
 
 def filter_and_extract_img_from_cnt(
@@ -272,11 +282,11 @@ def sort_cnts(
     cnts: cnt_container,
     hull_rot_pts: npt.NDArray[float]
 ) -> tuple[
-    Opt[list[int]],
-    Opt[list[int]],
+    Opt[cnt_container],
+    Opt[cnt_container],
     Opt[list[tf.Tensor]],
     Opt[list[tf.Tensor]],
-    Opt[list[float]]
+    Opt[list[npt.NDArray[float]]]
 ]:
     idxs = np.where(prediction >= 0.5)[0]
 

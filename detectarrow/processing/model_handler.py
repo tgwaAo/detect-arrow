@@ -70,7 +70,7 @@ class ModelHandler:
             metrics=['accuracy']
         )
 
-    def load_datasets(self, dataset_path: str = DATASET_PATH, seed: int = 42, val_split: float = 0.2) -> None:
+    def load_dataset(self, dataset_path: str = DATASET_PATH, seed: int = 42, val_split: float = 0.2) -> None:
         self.train_ds = image_dataset_from_directory(
             dataset_path,
             label_mode='binary',
