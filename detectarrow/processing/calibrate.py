@@ -9,10 +9,10 @@ import typing
 import numpy.typing as npt
 from typing import Optional as Opt
 
-from detectarrow.conf.paths import CALIB_IMGS_PATH
-from detectarrow.conf.paths import CAM_CONFIG_PATH
-from detectarrow.conf.paths import PRINTED_MEASUREMENT_FNAME
-from detectarrow.conf.imgs import TERM_CRITERIA
+from conf.paths import CALIB_IMGS_PATH
+from conf.paths import CAM_CONFIG_PATH
+from conf.paths import PRINTED_MEASUREMENT_FNAME
+from conf.imgs import TERM_CRITERIA
 
 
 class Calibrator:

@@ -11,16 +11,16 @@ from numpy import ndarray, dtype
 from tensorflow.python.framework.ops import EagerTensor
 import tensorflow as tf
 
-from detectarrow.conf.paths import RAW_VIDS_PATH
-from detectarrow.conf.paths import RAW_IMGS_PATH
-from detectarrow.conf.imgs import MIN_WIDTH_TO_HEIGHT
-from detectarrow.conf.imgs import MAX_WIDTH_TO_HEIGHT
-from detectarrow.conf.imgs import SIMILAR_AREA_PERCENT
-from detectarrow.conf.imgs import AREA_BORDER
-from detectarrow.conf.imgs import TARGET_SIZE
-from detectarrow.conf.imgs import COMPARED_SIZE
-from detectarrow.conf.imgs import ARROW_CONTOUR_POINTS
-from detectarrow.conf.imgs import BLUR_KERNEL
+from conf.paths import RAW_VIDS_PATH
+from conf.paths import RAW_IMGS_PATH
+from conf.imgs import MIN_WIDTH_TO_HEIGHT
+from conf.imgs import MAX_WIDTH_TO_HEIGHT
+from conf.imgs import SIMILAR_AREA_PERCENT
+from conf.imgs import AREA_BORDER
+from conf.imgs import TARGET_SIZE
+from conf.imgs import COMPARED_SIZE
+from conf.imgs import ARROW_CONTOUR_POINTS
+from conf.imgs import BLUR_KERNEL
 from datetime import datetime
 from datetime import timezone
 

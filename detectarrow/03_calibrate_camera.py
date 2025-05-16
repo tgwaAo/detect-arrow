@@ -6,8 +6,8 @@ from pathlib import PurePath
 import cv2
 import numpy as np
 
-from detectarrow.conf.paths import CALIB_IMGS_PATH
-from detectarrow.processing.calibrate import Calibrator
+from conf.paths import CALIB_IMGS_PATH
+from processing.calibrate import Calibrator
 
 if __name__ == '__main__':
     calib = Calibrator()

@@ -3,21 +3,21 @@
 import pathlib as pl
 import cv2
 
-from detectarrow.conf.paths import BIG_NEG_IMGS_PATH
-from detectarrow.conf.paths import ORIGINAL_NEG_PATH
-from detectarrow.conf.paths import MODEL_BNAME
-from detectarrow.conf.imgs import BLUR_KERNEL
-from detectarrow.conf.imgs import ARROW_CONTOUR_POINTS
-from detectarrow.processing.model_handler import ModelHandler
-from detectarrow.processing.utils import extract_cnts
-from detectarrow.processing.utils import filter_cnts
-from detectarrow.processing.utils import sort_cnts
-from detectarrow.processing.utils import save_img
-from detectarrow.processing.utils import choose_costum_path
-from detectarrow.processing.utils import get_nbr_of_imgs_for_aug
-from detectarrow.processing.utils import srtd_lst_candidates
-from detectarrow.processing.utils import costum_sort
-from detectarrow.processing.preparation import Preparation
+from conf.paths import BIG_NEG_IMGS_PATH
+from conf.paths import ORIGINAL_NEG_PATH
+from conf.paths import MODEL_BNAME
+from conf.imgs import BLUR_KERNEL
+from conf.imgs import ARROW_CONTOUR_POINTS
+from processing.model_handler import ModelHandler
+from processing.utils import extract_cnts
+from processing.utils import filter_cnts
+from processing.utils import sort_cnts
+from processing.utils import save_img
+from processing.utils import choose_costum_path
+from processing.utils import get_nbr_of_imgs_for_aug
+from processing.utils import srtd_lst_candidates
+from processing.utils import costum_sort
+from processing.preparation import Preparation
 if __name__ == '__main__':
     input_description = f'insert source path [{BIG_NEG_IMGS_PATH}]>>'
     source_path = input(input_description)

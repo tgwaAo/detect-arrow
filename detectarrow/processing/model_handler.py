@@ -18,12 +18,12 @@ import numpy.typing as npt
 from tensorflow.data import Dataset as ds
 from tensorflow.python.framework.ops import EagerTensor as eagert
 
-from detectarrow.conf.paths import DATASET_PATH
-from detectarrow.conf.paths import ARROWS_PATH
-from detectarrow.conf.paths import MODELS_PATH
-from detectarrow.conf.paths import MODEL_BNAME
-from detectarrow.conf.imgs import COMPARED_SIZE
-from detectarrow.processing.utils import get_newest_fname_in_path
+from conf.paths import DATASET_PATH
+from conf.paths import ARROWS_PATH
+from conf.paths import MODELS_PATH
+from conf.paths import MODEL_BNAME
+from conf.imgs import COMPARED_SIZE
+from processing.utils import get_newest_fname_in_path
 
 
 class ModelHandler:

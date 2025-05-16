@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 from keras.preprocessing import image_dataset_from_directory
 from keras.layers import concatenate
 
-from detectarrow.conf.paths import MODELS_PATH
-from detectarrow.conf.paths import MODEL_BNAME
-from detectarrow.conf.paths import ORIGINAL_NEG_SUB_PATH
-from detectarrow.conf.paths import DATASET_PATH
-from detectarrow.conf.imgs import COMPARED_SIZE
-from detectarrow.processing.preparation import Preparation
-from detectarrow.processing.model_handler import ModelHandler
-from detectarrow.processing.utils import get_nbr_of_imgs_for_aug
+from conf.paths import MODELS_PATH
+from conf.paths import MODEL_BNAME
+from conf.paths import ORIGINAL_NEG_SUB_PATH
+from conf.paths import DATASET_PATH
+from conf.imgs import COMPARED_SIZE
+from processing.preparation import Preparation
+from processing.model_handler import ModelHandler
+from processing.utils import get_nbr_of_imgs_for_aug
 
 if __name__ == '__main__':
     preparator = Preparation()

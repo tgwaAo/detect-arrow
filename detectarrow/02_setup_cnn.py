@@ -1,6 +1,6 @@
 #!/bin/env python3
 
-from detectarrow.processing.model_handler import ModelHandler
+from processing.model_handler import ModelHandler
 
 if __name__ == '__main__':
     model_handler = ModelHandler()
