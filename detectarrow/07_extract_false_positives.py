@@ -25,10 +25,12 @@ if __name__ == '__main__':
         source_path = pl.Path(BIG_NEG_IMGS_PATH)
     else:
         source_path = pl.Path(source_path)
+
     org_neg_path = pl.Path(ORIGINAL_NEG_PATH)
     tmp_path = srtd_lst_candidates(org_neg_path)[-1]
     working_idx = costum_sort(tmp_path)
     org_neg_path = pl.Path(org_neg_path.parent, f'{org_neg_path}-{working_idx + 1}')
+
     pre_aug_desc = f'choose output path [{org_neg_path}]>>'
     pre_aug_path = input(pre_aug_desc)
     if not pre_aug_path:
