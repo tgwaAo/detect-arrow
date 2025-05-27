@@ -1,7 +1,7 @@
 from pathlib import PurePath
 import pathlib as pl
 import random
-from shutil import copy2
+from shutil import move
 from glob import glob
 import itertools
 
@@ -379,4 +379,4 @@ class Preparation:
         pl.Path(ANYTHING_PATH).mkdir(parents=True, exist_ok=True)
         used_neg_filenames = itertools.islice(pl.Path(UNUSED_NEG_PATH).glob('*.jpg'), nbr_imgs)
         for file in used_neg_filenames:
-            copy2(file, PurePath(ANYTHING_PATH, file.name))
+            move(file, PurePath(ANYTHING_PATH, file.name))
