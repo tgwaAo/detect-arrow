@@ -9,11 +9,14 @@ import numpy as np
 import cv2
 
 from conf.paths import PRINTED_PATH
+from conf.paths import PRINTED_BNAME
 from conf.paths import CAM_CONFIG_PATH
 from conf.paths import CAM_CONFIG_BNAME
 from conf.imgs import ABORT_VIDEO_KEYS
+from conf.imgs import BLUR_KERNEL
 from processing.model_handler import ModelHandler
 from processing.utils import est_pose_in_img
+from processing.utils import sort_pt_biggest_dist_y
 from inout.video import VideoCapture
 
 
@@ -41,8 +44,10 @@ if __name__ == '__main__':
             print(f'unexpected exeption occured: {str(e)}')
             print('using camera 0')
 
-    printed_fname = str(pl.PurePath(PRINTED_PATH, 'coords_of_arrow.txt'))
+    printed_fname = str(pl.PurePath(PRINTED_PATH, PRINTED_BNAME))
     points_printed = np.loadtxt(printed_fname, dtype=int)
+    points_printed = sort_pt_biggest_dist_y(points_printed, False, points_printed)
+
     mtx_fname = str(pl.PurePath(CAM_CONFIG_PATH, 'mtx.txt'))
     mtx = np.loadtxt(mtx_fname)
 
@@ -73,7 +78,7 @@ if __name__ == '__main__':
 
     abort = False
     text = ''
-    pos_cnt = ()
+    cnt = ()
     neg_cnt = ()
     time_start = time()
     R = None
@@ -93,13 +98,12 @@ if __name__ == '__main__':
             if (time_now - time_start) > time_till_update:
                 time_start = time_now
                 gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                gray_img = cv2.blur(gray_img, (3,3))
+                gray_img = cv2.blur(gray_img, BLUR_KERNEL)
                 result = est_pose_in_img(gray_img, model, points_printed, mtx)
                 if result is not None:
-                    R, T, pos_cnt, pred = result
+                    R, T, cnt, pred, hull_pts = result
                 else:
-                    R = T = pos_cnt = pred = None
-
+                    R = T = cnt = pred = hull_pts = None
 
             if R is not None:
                 text = (
@@ -115,7 +119,6 @@ if __name__ == '__main__':
                 text = (
                     'no arrow found'
                 )
-            cv2.drawContours(img, [pos_cnt], -1, (255, 0, 0), 3)
             cv2.putText(
                 img,
                 text,
@@ -124,6 +127,16 @@ if __name__ == '__main__':
                 0.5,
                 (230, 230, 0)
             )
+
+            if cnt:
+                cv2.drawContours(img, [cnt], -1, (255, 0, 0), 1)
+
+            if hull_pts is not None:
+                for idx, pt in enumerate(hull_pts):
+                    pt = pt.astype(int)
+                    cv2.circle(img, pt, 2, color, -1)
+                    cv2.putText(img, str(idx), pt + (5, -5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color)
+
             cv2.imshow('camera test', img)
             key = cv2.waitKey(20)
             if key in ABORT_VIDEO_KEYS:

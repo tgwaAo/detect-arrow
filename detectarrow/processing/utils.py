@@ -28,7 +28,16 @@ type cnt_container = Union[
     list[npt.NDArray[int], ...],
     tuple[npt.NDArray[int], ...]
 ]
-
+type list_of_retvals = list[
+    Opt[
+        tuple[
+            npt.NDArray[float],
+            npt.NDArray[float],
+            npt.NDArray[int],
+            float
+        ]
+    ]
+]
 
 def get_newest_fname_in_path(path: str) -> str:
     return str(max(pl.Path(path).glob('*'), key=lambda p: p.stat().st_ctime))
@@ -142,7 +151,7 @@ def extract_img_from_cnt(
 ) -> npt.NDArray[np.uint8]:
     if not isinstance(shape, tuple):
         shape = cv2.minAreaRect(shape)
-    cropped_img, _ = rotate_and_crop(gray_img, shape)
+    cropped_img, _, _ = rotate_and_crop(gray_img, shape)
     small_img = cv2.resize(cropped_img, TARGET_SIZE)
     return small_img
 
@@ -169,10 +178,17 @@ def extract_cnts(img: npt.NDArray[np.uint8], sigma: float = .33) -> tuple[npt.ND
     return cnts
 
 
-def extract_feature_pts(pos_cnt: npt.NDArray[int], factor: float = 0.01) -> npt.NDArray[int]:
+def extract_feature_pts(pos_cnt: npt.NDArray[int], factors: list[float] = [0.01, 0.015, 0.002, 0.0095, 0.009], expected_pts = None) -> npt.NDArray[int]:
     retval = cv2.arcLength(pos_cnt, True)
-    return cv2.approxPolyDP(pos_cnt, factor * retval, True)
+    for factor in factors:
+        hull_pts = cv2.approxPolyDP(pos_cnt, factor * retval, True)
+        hull_pts = merge_points(hull_pts)
+        if expected_pts is not None and len(hull_pts) == expected_pts:
+            return hull_pts
+        elif expected_pts is None:
+            return hull_pts
 
+    return None
 
 def merge_points(pts: npt.NDArray[int], max_merge_dist: int = 4) -> list[npt.NDArray[float]]:
     to_merge = []
@@ -213,7 +229,8 @@ def rotate_and_crop(
         image: npt.NDArray[np.uint8],
         min_area_rect: tuple[tuple[float], tuple[float], float],
         factor: float = 1.3,
-        cnt: Opt[npt.NDArray[int]] = None
+        cnt: Opt[npt.NDArray[int]] = None,
+        expected_pts = None
 ) -> tuple[npt.NDArray[np.uint8], npt.NDArray[float]]:
     box = cv2.boxPoints(min_area_rect)
     box = np.intp(box)
@@ -234,30 +251,33 @@ def rotate_and_crop(
     y_min = min(y_coordinates_of_box)
     y_max = max(y_coordinates_of_box)
 
-    center = (int((x_min + x_max) / 2), int((y_min + y_max) / 2))
-    cropped = cv2.getRectSubPix(image, size, center)
     M = cv2.getRotationMatrix2D((size[0] / 2, size[1] / 2), min_rect_angle_deg, 1.0)
-    cropped = cv2.warpAffine(cropped, M, size)
+    center = (int((x_min + x_max) / 2), int((y_min + y_max) / 2))
+    cropped_image = cv2.getRectSubPix(image, size, center)
+    rotated = cv2.warpAffine(cropped_image, M, size)
 
     if width_to_height >= 1:
         cropped_rotated = cv2.getRectSubPix(
-            cropped,
+            rotated,
             patchSize=(int(factor * height), int(factor * width)),
             center=(size[0] / 2, size[1] / 2)
         )
     else:
         cropped_rotated = cv2.getRectSubPix(
-            cropped,
+            rotated,
             patchSize=(int(factor * width), int(factor * height)),
             center=(size[0] / 2, size[1] / 2)
         )
 
     if cnt is not None:
-        hull_pts = extract_feature_pts(cnt)
-        hull_pts = np.array(merge_points(hull_pts)) - min_area_rect[0]
-        rot_pts = np.zeros((len(hull_pts), 2))
+        hull_pts = extract_feature_pts(cnt, expected_pts=expected_pts)
+        if hull_pts is None:
+            return cropped_rotated, None, None
 
-        for idx, pt in enumerate(hull_pts):
+        hull_pts_ = np.array(hull_pts) - min_area_rect[0]
+        rot_pts = np.zeros((len(hull_pts_), 2))
+
+        for idx, pt in enumerate(hull_pts_):
             angle_rad = np.arctan2(pt[1], pt[0]) - np.deg2rad(min_rect_angle_deg)
             dist = np.hypot(pt[0], pt[1])
             pt_x = dist * np.cos(angle_rad)
@@ -265,8 +285,9 @@ def rotate_and_crop(
             rot_pts[idx] = pt_x, pt_y
 
     else:
+        hull_pts = None
         rot_pts = None
-    return cropped_rotated, rot_pts
+    return cropped_rotated, hull_pts, rot_pts
 
 
 def get_rotation(min_area_angle: float, width_to_height: float) -> float:
@@ -280,6 +301,7 @@ def get_rotation(min_area_angle: float, width_to_height: float) -> float:
 def sort_cnts(
     prediction: EagerTensor,
     cnts: cnt_container,
+    cnt_hull_pts_list: npt.NDArray[float],
     hull_rot_pts: npt.NDArray[float]
 ) -> tuple[
     Opt[cnt_container],
@@ -293,9 +315,11 @@ def sort_cnts(
     if len(idxs):
         positive_contours = [element for idx, element in enumerate(cnts) if idx in idxs]
         pos_prediction = [element for idx, element in enumerate(prediction) if idx in idxs]
+        cnt_hull_pts_list = [element for idx, element in enumerate(cnt_hull_pts_list) if idx in idxs]
         hull_rot_pts = [element for idx, element in enumerate(hull_rot_pts) if idx in idxs]
     else:
         positive_contours = None
+        cnt_hull_pts_list = None
         hull_rot_pts = None
         pos_prediction = None
 
@@ -306,7 +330,7 @@ def sort_cnts(
         negative_contours = None
         neg_prediction = None
 
-    return positive_contours, negative_contours, pos_prediction, neg_prediction, hull_rot_pts
+    return positive_contours, negative_contours, pos_prediction, neg_prediction, cnt_hull_pts_list, hull_rot_pts
 
 
 def filter_cnts(
@@ -320,6 +344,7 @@ def filter_cnts(
     filtered_cnts: list[npt.NDArray[int], ...] = []
     # noinspection PyTypeChecker
     hull_rot_pts = []
+    cnt_hull_pts_list = []
     center_list = []
     area_list = []
     for cnt in cnts:
@@ -350,8 +375,9 @@ def filter_cnts(
                 continue
 
             if gray_img is not None:
-                cropped_img, rot_pts = rotate_and_crop(gray_img, min_rect, cnt=cnt)
-                if expected_pts and len(rot_pts) == expected_pts:
+                cropped_img, cnt_hull_pts, rot_pts = rotate_and_crop(gray_img, min_rect, cnt=cnt, expected_pts=expected_pts)
+                if expected_pts and rot_pts is not None and len(rot_pts) == expected_pts:
+                    cnt_hull_pts_list.append(cnt_hull_pts)
                     hull_rot_pts.append(rot_pts)
                     small_img = cv2.resize(cropped_img, TARGET_SIZE)
                     small_imgs.append(small_img)
@@ -365,8 +391,9 @@ def filter_cnts(
                 center_list.append(center)
 
     small_imgs = np.array(small_imgs)
+    cnt_hull_pts_list = np.array(cnt_hull_pts_list)
     hull_rot_pts = np.array(hull_rot_pts)
-    return small_imgs, filtered_cnts, hull_rot_pts
+    return small_imgs, filtered_cnts, cnt_hull_pts_list, hull_rot_pts
 
 
 def more_pts_up(pts: npt.ArrayLike, center: int = None) -> bool:
@@ -394,22 +421,18 @@ def angle_x_axis(pt: npt.ArrayLike) -> float:
     return angle_rad
 
 
-def get_max_dist_reference(pts: npt.NDArray[float], ref_up: bool) -> Opt[npt.NDArray[float]]:
-    max_dist = 0
-    min_idx = -1
-    for idx, pt in enumerate(pts):
-        dist = np.power(pt[0], 2) + np.power(pt[1], 2)
-        if max_dist < dist:
-            if ref_up and pt[1] < 0:  # up is lower
-                min_idx = idx
-                max_dist = dist
-            elif not ref_up and 0 < pt[1]:
-                min_idx = idx
-                max_dist = dist
+def get_max_y_dist_reference(pts: npt.NDArray[float], ref_up: bool) -> Opt[npt.NDArray[float]]:
+    comp_dist_y = 0
+    for pt in pts:
+        y_pt = pt[1]
+        if ref_up and y_pt < comp_dist_y:
+            comp_dist_y = y_pt
+            ref_pt = pt
+        elif not ref_up and comp_dist_y < y_pt:
+            comp_dist_y = y_pt
+            ref_pt = pt
 
-    if min_idx == -1:
-        return None
-    return pts[min_idx]
+    return ref_pt
 
 
 def rot_centered_pts(pts: npt.ArrayLike, ref_angle_rad: float) -> npt.NDArray[float]:
@@ -433,13 +456,13 @@ def sort_pts_by_angles(
     return org_pts[idx_sorted]
 
 
-def sort_pt_biggest_dist_center(
+def sort_pt_biggest_dist_y(
     pts: npt.ArrayLike,
     ref_up: bool,
     org_pts: npt.ArrayLike
 ) -> npt.ArrayLike:
-    closest_y = get_max_dist_reference(pts, ref_up)
-    ref_angle_rad = (np.pi / 2) - np.arctan2(closest_y[1], closest_y[0])
+    ref_pt = get_max_y_dist_reference(pts, ref_up)
+    ref_angle_rad = (np.pi / 2) - np.arctan2(ref_pt[1], ref_pt[0])
     rot_pts = rot_centered_pts(pts, ref_angle_rad)
     return sort_pts_by_angles(rot_pts, org_pts)
 
@@ -488,7 +511,7 @@ def est_cnts_in_img(
 ]:
     cnts = extract_cnts(gray_img)
 
-    filtered_images, cnts, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
+    filtered_images, cnts, cnt_hull_pts_list, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
 
     if not len(filtered_images):
         if verbose:
@@ -498,30 +521,27 @@ def est_cnts_in_img(
     prediction = model(filtered_images)
 
     # noinspection PyTypeChecker
-    return sort_cnts(prediction, cnts, hull_rot_pts)
+    return sort_cnts(prediction, cnts, cnt_hull_pts_list, hull_rot_pts)
 
 
 def est_pose_of_cnt(
-    best_cnt,
+    cnt,
     points_printed,
-    best_hull_rot_pts,
+    cnt_hull_pts,
+    hull_rot_pts,
     mtx,
     verbose=False
 ) -> Opt[tuple[npt.NDArray[float], npt.NDArray[float]]]:
-    hull_points = extract_feature_pts(best_cnt)
-    hull_points = merge_points(hull_points)
-    if len(hull_points) != ARROW_CONTOUR_POINTS:
+    if len(cnt_hull_pts) != ARROW_CONTOUR_POINTS:
         if verbose:
-            print(f'incorrect number of hull points, got {len(hull_points)} need {ARROW_CONTOUR_POINTS}')
+            print(f'incorrect number of hull points, got {len(cnt_hull_pts)} need {ARROW_CONTOUR_POINTS}')
         return None
-    hull_points = np.reshape(hull_points, (ARROW_CONTOUR_POINTS, 2))
-    ref_up = more_pts_up(best_hull_rot_pts)
-    hull_points = sort_pt_biggest_dist_center(best_hull_rot_pts, ref_up, hull_points)
-
-    points_printed = sort_pt_biggest_dist_center(points_printed, False, points_printed)
-    homogr, _ = cv2.findHomography(points_printed, hull_points, cv2.RANSAC)
+    cnt_hull_pts = np.reshape(cnt_hull_pts, (ARROW_CONTOUR_POINTS, 2))
+    ref_up = more_pts_up(hull_rot_pts)
+    cnt_hull_pts = sort_pt_biggest_dist_y(hull_rot_pts, ref_up, cnt_hull_pts)
+    homogr, _ = cv2.findHomography(points_printed, cnt_hull_pts, cv2.RANSAC)
     rot, trans = calc_rot_and_trans(homogr, mtx)
-    return rot, trans
+    return rot, trans, cnt_hull_pts
 
 
 def est_pose_in_img(
@@ -535,7 +555,7 @@ def est_pose_in_img(
     if cnt_result is None:
         return None
 
-    pos_cnts, neg_cnts, pos_preds, neg_preds, hull_rot_pts = cnt_result
+    pos_cnts, neg_cnts, pos_preds, neg_preds, cnt_hull_pts_list, hull_rot_pts = cnt_result
     if pos_cnts is None:
         if verbose:
             print('no positive contour found')
@@ -546,16 +566,18 @@ def est_pose_in_img(
         return None
 
     # noinspection PyTypeChecker
-    idx = np.argmax(pos_preds)  # list of tensors being treated like list[tuple[float]]
+    idx = np.argmax(pos_preds)  # A list of tensors is being treated like list[tuple[float]].
+    pos_pred: float = pos_preds[idx][0]
     best_cnt: npt.NDArray[int] = pos_cnts[idx]
+    best_cnt_hull_pts = cnt_hull_pts_list[idx]
     best_hull_rot_pts = hull_rot_pts[idx]
-    result = est_pose_of_cnt(best_cnt, points_printed, best_hull_rot_pts, mtx, verbose)
+    result = est_pose_of_cnt(best_cnt, points_printed, best_cnt_hull_pts, best_hull_rot_pts, mtx, verbose)
     if result is None:
-        return None
-    R, T = result
+        return None, None, best_cnt, pos_pred, None
+
+    R, T, sorted_hull_pts = result
     # noinspection PyTypeChecker
-    pos_pred: float = pos_preds[idx][0]  # list of tensors being treated like list[tuple[float]]
-    return R, T, best_cnt, pos_pred
+    return R, T, best_cnt, pos_pred, sorted_hull_pts
 
 
 def est_poses_in_img(
@@ -568,26 +590,39 @@ def est_poses_in_img(
     cnt_result = est_cnts_in_img(gray_img, model, verbose=verbose)
     if cnt_result is None:
         return None
-    pos_cnts, neg_cnts, pos_preds, neg_preds, hull_rot_pts = cnt_result
+    pos_cnts, neg_cnts, pos_preds, neg_preds, cnt_hull_pts_list, hull_rot_pts = cnt_result
     if not len(pos_cnts):
         if verbose:
             print('no positive contour found')
         return None
 
-    all_ret_vals: list[
-        Opt[tuple[npt.NDArray[float], npt.NDArray[float], npt.NDArray[int], float]]
-    ] = [None] * len(pos_cnts)
+    all_ret_vals: list_of_retvals = [None] * len(pos_cnts)
     for idx in range(len(pos_cnts)):
-        cnt_result = est_pose_of_cnt(pos_cnts[idx], points_printed, hull_rot_pts[idx], mtx, verbose)
+        cnt_result = est_pose_of_cnt(
+            pos_cnts[idx],
+            points_printed,
+            cnt_hull_pts_list[idx],
+            hull_rot_pts[idx],
+            mtx,
+            verbose
+        )
         if cnt_result is None:
+            None, None, pos_cnts[idx], pos_preds[idx][0], None
             if verbose:
                 print(f'could not estimate pose at {idx}')
         else:
-            R, T = cnt_result
+            R, T, sorted_hull_pts = cnt_result
             # noinspection PyTypeChecker
-            all_ret_vals[idx] = R, T, pos_cnts[idx], pos_preds[idx][0]
+            all_ret_vals[idx] = R, T, pos_cnts[idx], pos_preds[idx][0], sorted_hull_pts
 
     return all_ret_vals
 
 
+def save_points_in_img(pts, offset=(200,200), name='test.jpg'):
+    black = np.zeros((480, 640, 3))
+    pts = pts.astype(int) + offset
+    for idx, pt in enumerate(pts):
+        cv2.circle(black, pt, 3, (255,255,255), -1)
+        cv2.putText(black, str(idx), pt + (5, -5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255))
 
+    cv2.imwrite(name, black)

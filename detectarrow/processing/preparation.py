@@ -221,7 +221,7 @@ class Preparation:
                     continue
 
                 prediction = self.model.predict(filtered_list).flatten()
-                pos_cnts, neg_cnts, _, _, _ = sort_cnts(prediction, filtered_cnts, hull_rot_pts)
+                pos_cnts, neg_cnts, _, _, _, _ = sort_cnts(prediction, filtered_cnts, hull_rot_pts)
             else:
                 pos_cnts = []
                 neg_cnts = cnts

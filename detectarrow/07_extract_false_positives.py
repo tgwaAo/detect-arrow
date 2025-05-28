@@ -11,7 +11,6 @@ from conf.imgs import ARROW_CONTOUR_POINTS
 from processing.model_handler import ModelHandler
 from processing.utils import extract_cnts
 from processing.utils import filter_cnts
-from processing.utils import sort_cnts
 from processing.utils import save_img
 from processing.utils import choose_costum_path
 from processing.utils import get_nbr_of_imgs_for_aug
@@ -48,7 +47,7 @@ if __name__ == '__main__':
         blurred = cv2.blur(gray_img, BLUR_KERNEL)
         cnts = extract_cnts(blurred)
 
-        filtered_list, filtered_cnts, hull_rot_pts = filter_cnts(cnts, gray_img, ARROW_CONTOUR_POINTS)
+        filtered_list, _, _, _ = filter_cnts(cnts, gray_img, ARROW_CONTOUR_POINTS)
         if not len(filtered_list):
             print(f'no candidate for prediction found in {img_fname}')
             continue

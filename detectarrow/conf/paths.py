@@ -16,6 +16,7 @@ CALIB_IMGS_PATH = '../calibration-images/'
 CAM_CONFIG_PATH = '../cam-config/'
 CAM_CONFIG_BNAME = 'cam_conf.json'
 PRINTED_PATH = '../printed-values'
+PRINTED_BNAME = 'coords_of_arrow.txt'
 PRINTED_MEASUREMENT_FNAME = str(PurePath(PRINTED_PATH, 'calibration_measurements.json'))
 MODELS_PATH = '../models/'
 MODEL_BNAME = 'arrow_detection.keras'
