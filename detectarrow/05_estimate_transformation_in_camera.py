@@ -10,10 +10,12 @@ import cv2
 
 from conf.paths import PRINTED_PATH
 from conf.paths import CAM_CONFIG_PATH
+from conf.paths import CAM_CONFIG_BNAME
 from conf.imgs import ABORT_VIDEO_KEYS
 from processing.model_handler import ModelHandler
 from processing.utils import est_pose_in_img
-from io.video import VideoCapture
+from inout.video import VideoCapture
+
 
 if __name__ == '__main__':
     cam_target = 0
@@ -22,7 +24,7 @@ if __name__ == '__main__':
     time_till_update = 1
     y_location_text = 10
 
-    cam_conf_filepath = pl.Path(CAM_CONFIG_PATH, 'cam_conf.json')
+    cam_conf_filepath = pl.Path(CAM_CONFIG_PATH, CAM_CONFIG_BNAME)
     if cam_conf_filepath.is_file():
         try:
             with open(str(cam_conf_filepath), 'r') as file:
@@ -59,7 +61,12 @@ if __name__ == '__main__':
     model.trainable = False
 
     print(f'using camera target {cam_target}')
-    cap = VideoCapture(cam_target, cam_width, cam_height, drop_if_full=False)
+    if isinstance(cam_target, str):
+        drop_if_full = False
+    else:
+        drop_if_full = True
+
+    cap = VideoCapture(cam_target, cam_width, cam_height, drop_if_full=drop_if_full)
     if not cap.is_opened():
         cap.release()
         exit(1)
@@ -83,7 +90,7 @@ if __name__ == '__main__':
                 continue
 
             time_now = time()
-            if (time_now - time_start) > 1:
+            if (time_now - time_start) > time_till_update:
                 time_start = time_now
                 gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 gray_img = cv2.blur(gray_img, (3,3))

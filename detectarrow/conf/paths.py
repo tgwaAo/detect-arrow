@@ -14,6 +14,7 @@ ANYTHING_PATH = str(PurePath(DATASET_PATH, 'anything/'))
 EXAMPLES_PATH = '../example-images/'
 CALIB_IMGS_PATH = '../calibration-images/'
 CAM_CONFIG_PATH = '../cam-config/'
+CAM_CONFIG_BNAME = 'cam_conf.json'
 PRINTED_PATH = '../printed-values'
 PRINTED_MEASUREMENT_FNAME = str(PurePath(PRINTED_PATH, 'calibration_measurements.json'))
 MODELS_PATH = '../models/'
