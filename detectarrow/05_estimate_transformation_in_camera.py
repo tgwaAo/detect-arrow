@@ -19,10 +19,10 @@ from inout.video import VideoCapture
 
 if __name__ == '__main__':
     cam_target = 0
-    cam_height = None
-    cam_width = None
+    cam_height = 480
+    cam_width = 640
     time_till_update = 1
-    y_location_text = 10
+    y_location_text = 470
 
     cam_conf_filepath = pl.Path(CAM_CONFIG_PATH, CAM_CONFIG_BNAME)
     if cam_conf_filepath.is_file():
