@@ -168,7 +168,7 @@ To get proper estimation result you need to calibrate your camera first (1)(2):
 ### Use your own camera
 
 1. Setup and calibrate as described in 1. and 2. of "Use your own images"
-2. Edit the file cam-config/cam_conf.json.  
+2. (Optional) Create the file cam-config/cam_conf.json (described below)  
 3. Start "05_estimate_transformation_in_camera.py":  
   `python3 05_estimate_transformation_in_camera.py`
 4. Close the output using letter "q"
@@ -225,7 +225,7 @@ The default path for this is big-negative-images. This is only sufficient for th
 ## Content of cam-config/cam_conf.json
 ```json
 {  
-  "cam_target" : 2,  
+  "cam_target" : 0,  
   "cam_height" : 480,  
   "cam_width" : 640,  
   "time_till_update" : 1,  
