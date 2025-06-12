@@ -77,6 +77,7 @@ if __name__ == '__main__':
         exit(1)
 
     abort = False
+    color = (255, 0, 0)
     text = ''
     cnt = ()
     neg_cnt = ()
@@ -84,6 +85,7 @@ if __name__ == '__main__':
     R = None
     T = None
     pred = None
+    hull_pts = None
     try:
         while not abort:
             ret, img = cap.read()
@@ -128,7 +130,7 @@ if __name__ == '__main__':
                 (230, 230, 0)
             )
 
-            if cnt:
+            if cnt is not None:
                 cv2.drawContours(img, [cnt], -1, (255, 0, 0), 1)
 
             if hull_pts is not None:
