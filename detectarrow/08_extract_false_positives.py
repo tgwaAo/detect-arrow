@@ -72,6 +72,3 @@ if __name__ == '__main__':
     model_handler.train_model(epochs=5)
     model_handler.save_model(str(saved_bname))
     model_handler.show_training_progress()
-    model_handler.prepare_validation()
-    model_handler.classification_report()
-    model_handler.saliency(import_hack=True)

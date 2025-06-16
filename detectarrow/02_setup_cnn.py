@@ -1,7 +1,5 @@
 #!/bin/env python3
 
-from processing.model_handler import ModelHandler
-
 if __name__ == '__main__':
     model_handler = ModelHandler()
     model_handler.build_model()
@@ -11,6 +9,3 @@ if __name__ == '__main__':
     model_handler.save_model()
     model_handler.show_training_progress()
     model_handler.try_val_sample()
-    model_handler.prepare_validation()
-    model_handler.classification_report()
-    model_handler.saliency(import_hack=True)
