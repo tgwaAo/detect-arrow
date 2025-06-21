@@ -253,6 +253,11 @@ The detection of an arrow is slowed down to only a few frames to actual read the
 
 The text does not have a fixed location in the image yet. The default value 470 sets it to the bottom of the image.
 
+## Result
+
+The network detection might have a few small issues due to the limited training data, but it work on closer and more distant arrows.
+The pose estimation has some problems with one factor to get the relevant points and also has problems with an estimation of more distanced arrows. Some minor errors are created due to estimating an angle and not properly preparing the example images and the right arrow in multiple.jpg has a big rotation that should be created by just copying the arrow and not adjusting it to image distortion.
+
 References:  
 (1) https://docs.opencv.org/4.x/da/d0d/tutorial_camera_calibration_pattern.html  
 (2) https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html  
