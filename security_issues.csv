@@ -1,0 +1,5 @@
+Lib;CVE;Note;Solution
+tensorflow@2.17.0;CVE-2021-35958;do not use tf.keras.utils.get_file;ignored
+pip@24.2;CVE-2018-20225;it has been reported that this is intended functionality and the user is responsible for using --extra-index-url securely;ignored
+parso@0.8.4;CVE-2019-12760;uses pickle files when cache is enabled and that is fine;ignored
+joblib@1.4.2;CVE-2024-34997;false positive;ignored
