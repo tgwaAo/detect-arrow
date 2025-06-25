@@ -54,8 +54,8 @@ from .utils import create_sub_path_with_nbr
 from .model_handler import ModelHandler
 
 type cnt_container = Union[
-    list[npt.NDArray[int], ...],
-    tuple[npt.NDArray[int], ...]
+    list[npt.NDArray[int]],
+    tuple[npt.NDArray[int]]
 ]
 
 
@@ -113,7 +113,7 @@ class Preparation:
         gray_img: npt.ArrayLike,
         color: Colors,
         min_area_cnt: Opt[int] = None,
-    ) -> Opt[tuple[Opt[npt.NDArray[int]], list[npt.NDArray[int], ...]]]:
+    ) -> Opt[tuple[Opt[npt.NDArray[int]], list[npt.NDArray[int]]]]:
         neg_cnts = []
         for num, cnt in enumerate(cnts):
             min_rect = cv2.minAreaRect(cnt)
@@ -215,13 +215,13 @@ class Preparation:
             cnts = extract_cnts(blurred)
 
             if use_model and self.model is not None:
-                filtered_list, filtered_cnts, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
+                filtered_list, filtered_cnts, cnt_hull_pts_list, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
                 if not len(filtered_list):
                     print(f'no candidate for prediction found in {img_filename}')
                     continue
 
                 prediction = self.model.predict(filtered_list).flatten()
-                pos_cnts, neg_cnts, _, _, _, _ = sort_cnts(prediction, filtered_cnts, hull_rot_pts)
+                pos_cnts, neg_cnts, _, _, _, _ = sort_cnts(prediction, filtered_cnts, cnt_hull_pts_list, hull_rot_pts)
             else:
                 pos_cnts = []
                 neg_cnts = cnts

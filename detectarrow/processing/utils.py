@@ -25,8 +25,8 @@ from datetime import datetime
 from datetime import timezone
 
 type cnt_container = Union[
-    list[npt.NDArray[int], ...],
-    tuple[npt.NDArray[int], ...]
+    list[npt.NDArray[int]],
+    tuple[npt.NDArray[int]]
 ]
 type list_of_retvals = list[
     Opt[
@@ -86,8 +86,7 @@ def srtd_lst_candidates(ref_path: pl.Path) -> list[pl.Path]:
 
 def get_user_ans_path(paths: list[pl.Path], new_candidate=None) -> Opt[tuple[pl.Path, int]]:
     nbr_path = -1
-    for path in paths:
-        nbr_path = costum_sort(paths[-1])
+    for nbr_path, path in enumerate(paths):
         print(f'{nbr_path}: {path}')
 
     if new_candidate:
@@ -168,7 +167,7 @@ def filter_and_extract_norm_img_from_cnt(
     return None
 
 
-def extract_cnts(img: npt.NDArray[np.uint8], sigma: float = .33) -> tuple[npt.NDArray[int], ...]:
+def extract_cnts(img: npt.NDArray[np.uint8], sigma: float = .33) -> tuple[npt.NDArray[int]]:
     v = np.median(img)
     # ---- apply automatic Canny edge detection using the computed median----
     lower = int(max(0, (1.0 - sigma) * v))  # ---- lower threshold
@@ -337,11 +336,11 @@ def filter_cnts(
     cnts: cnt_container,
     gray_img: npt.NDArray[np.uint8] = None,
     expected_pts: int = None
-) -> tuple[npt.NDArray[np.uint8], list[npt.NDArray[int], ...], npt.NDArray[float]]:
+) -> tuple[npt.NDArray[np.uint8], list[npt.NDArray[int]], npt.NDArray[int], npt.NDArray[float]]:
     # noinspection PyTypeChecker
     small_imgs = []
     # noinspection PyTypeChecker
-    filtered_cnts: list[npt.NDArray[int], ...] = []
+    filtered_cnts: list[npt.NDArray[int]] = []
     # noinspection PyTypeChecker
     hull_rot_pts = []
     cnt_hull_pts_list = []

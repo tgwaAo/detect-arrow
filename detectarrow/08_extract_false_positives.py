@@ -27,8 +27,8 @@ if __name__ == '__main__':
 
     org_neg_path = pl.Path(ORIGINAL_NEG_PATH)
     tmp_path = srtd_lst_candidates(org_neg_path)[-1]
-    working_idx = costum_sort(tmp_path)
-    org_neg_path = pl.Path(org_neg_path.parent, f'{org_neg_path}-{working_idx + 1}')
+    working_idx = costum_sort(tmp_path) + 1
+    org_neg_path = pl.Path(org_neg_path.parent, f'{org_neg_path.name}-{working_idx}')
 
     pre_aug_desc = f'choose output path [{org_neg_path}]>>'
     pre_aug_path = input(pre_aug_desc)
@@ -53,11 +53,15 @@ if __name__ == '__main__':
             continue
 
         prediction = model_handler.model.predict(filtered_list).flatten()
-        for working_idx, single_pred in enumerate(prediction):
+        for current_idx, single_pred in enumerate(prediction):
             if single_pred >= 0.5:
-                save_img(str(pre_aug_sub_path), filtered_list[working_idx])
+                save_img(str(pre_aug_sub_path), filtered_list[current_idx])
 
     neg_roughly_created_size = get_nbr_of_imgs_for_aug(str(pre_aug_sub_path), 'negative')
+    if neg_roughly_created_size == 0:
+        print('will not create and train as the target size is 0')
+        exit()
+
     preparator = Preparation()
     preparator.aug_imgs_and_build_neg_dataset(
         org_neg_path=str(pre_aug_path),
@@ -70,5 +74,6 @@ if __name__ == '__main__':
     model_handler.load_dataset()
     model_handler.load_model()
     model_handler.train_model(epochs=5)
+    print(f'save model as {saved_bname}')
     model_handler.save_model(str(saved_bname))
     model_handler.show_training_progress()

@@ -137,7 +137,7 @@ This paths will be created automatically and will be used to store the unused ex
 2. Create environment with conda:  
   `conda env create -f environment.yml`
 3. Execute  
-  `python3 04_estimate_transformation_in_image.py`
+  `python3 05_estimate_transformation_in_image.py`
 4. Look at the images with their estimation
 5. Close the output using letter "q"
 
@@ -150,7 +150,7 @@ To get proper estimation result you need to calibrate your camera first (1)(2):
 3. Make multiple photos of the chessboard pattern from different perspectives and place them inside "calibration-images".  
 4. You have to check the config at printed-values/calibration_measurements.json. The distance between points is what it sounds like and the width and height refer to the number of inner corners in width and height. (3)  
 5. Run the calibration:  
-  `python3 03_calibrate_camera.py`
+  `python3 04_calibrate_camera.py`
 6. Look at the output  
 7. Look at the estimated error on your console  
 8. Close the output using letter "q"  
@@ -159,7 +159,7 @@ To get proper estimation result you need to calibrate your camera first (1)(2):
 
 1. Setup project as described in "Quick test"
 2. Calibrate your camera as described in "Calibration"
-3. Copy file "04_estimate_transformation_in_image.py" and change the string "EXAMPLES_PATH" in line 44 to your path ( you might need to change the other paths if your copy is created somewhere else).
+3. Copy file "05_estimate_transformation_in_image.py" and change the string "EXAMPLES_PATH" in line 44 to your path ( you might need to change the other paths if your copy is created somewhere else).
 4. Run the estimation:  
   `python3 <path_to_your_file>`
 5. Look at the images with their estimation
@@ -169,8 +169,8 @@ To get proper estimation result you need to calibrate your camera first (1)(2):
 
 1. Setup and calibrate as described in 1. and 2. of "Use your own images"
 2. (Optional) Create the file cam-config/cam_conf.json (described below)  
-3. Start "05_estimate_transformation_in_camera.py":  
-  `python3 05_estimate_transformation_in_camera.py`
+3. Start "06_estimate_transformation_in_camera.py":  
+  `python3 06_estimate_transformation_in_camera.py`
 4. Close the output using letter "q"
 
 ### Start the complete process anew
@@ -203,7 +203,7 @@ If you have issues with the detection of positives, you can improve the detectio
 1. Make videos containing the searched object and with the used camera and place them in a newly created raw-videos-<number\> directory/folder 
 2. Activate virtualenv
 3. Start the extraction of true positives and maybe a few false positives as negatives with  
-  `python3 06_improve_data_extraction.py`
+  `python3 07_improve_data_extraction.py`
 4. Choose your newly created path
 5. Look at the current image. If it has found the one correct contour or you want to ignore the current image, continue using space.  
   If it has found a false positive or not found the positive contour at all, you can press "n" and collect the false negatives or the missing positives like described in "Start the complete process anew: section 9"
@@ -217,7 +217,7 @@ The default path for this is big-negative-images. This is only sufficient for th
 
 1. Activate virtualenv
 2. Start the extraction of false positives:  
-  `python3 07_extract_false_positives.py`
+  `python3 08_extract_false_positives.py`
 3. Wait
 4. Type your roughly whished size trough augmentation
 5. The augmentation adds the new images in an augmented way to the dataset, this dataset is used for training and evaluation. The output is shown now and can be closed with "q".

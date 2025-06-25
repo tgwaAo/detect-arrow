@@ -44,6 +44,7 @@ class ModelHandler:
             model_fname = get_newest_fname_in_path(MODELS_PATH)
         else:
             model_fname = str(PurePath(MODELS_PATH, model_bname))
+        print(f'using model {model_fname}')
         self.model = load_model(model_fname)
 
     def save_model(self, model_bname: str = None) -> None:
