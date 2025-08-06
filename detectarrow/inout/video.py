@@ -4,7 +4,7 @@ import threading
 import cv2
 
 from typing import Optional as Opt
-
+from typing import Any
 import numpy as np
 import numpy.typing as npt
 
@@ -21,7 +21,7 @@ class VideoCapture:
         self.drop_if_full = drop_if_full
         self.lock = threading.Lock()
         self.stop_cam_thread = threading.Event()
-        self.Q = Queue(maxsize=2)
+        self.queue: Queue = Queue(maxsize=2)
         self.cap = cv2.VideoCapture(target)
         if not self.cap.isOpened():
             print(f'could not open {target}')
@@ -35,9 +35,9 @@ class VideoCapture:
 
     def _reader(self) -> None:
         while not self.stop_cam_thread.is_set():
-            if self.drop_if_full or not self.Q.full():
-                if self.Q.full():
-                    _ = self.Q.get()  # remove value for new ones
+            if self.drop_if_full or not self.queue.full():
+                if self.queue.full():
+                    _ = self.queue.get()  # remove value for new ones
 
                 with self.lock:
                     ret, image = self.cap.read()
@@ -46,15 +46,15 @@ class VideoCapture:
                         self.stop_cam_thread.set()
                         self.cap.release()
 
-                self.Q.put(image)
+                self.queue.put(image)
 
     def read(self) -> tuple[bool, Opt[npt.NDArray[np.uint8]]]:
         if self.stop_cam_thread.is_set():
             ret = False
             img = None
-        elif not self.Q.empty():
+        elif not self.queue.empty():
             ret = True
-            img = self.Q.get(timeout=2)
+            img = self.queue.get(timeout=2)
         else:
             ret = True
             img = None
@@ -65,7 +65,7 @@ class VideoCapture:
             ret = self.cap.isOpened()
         return ret
 
-    def set(self, *args) -> None:
+    def set(self, *args: Any) -> None:
         with self.lock:
             self.cap.set(*args)
 

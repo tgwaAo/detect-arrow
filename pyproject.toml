@@ -1,0 +1,108 @@
+[project]
+name = "detect-arrow"
+version = "2025-07-20"
+requires-python = ">= 3.12"
+author = [
+    {name = "Uwe Simon", email = "usimon@mailbox.org"},
+]
+description = "Find the pose of a printed arrow using opencvs findContours and a small neural network."
+readme = "README.md"
+license = "GPL-3.0"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 80
+indent-width = 4
+
+exclude = [
+    ".git",
+    ".ipynb_checkpoints",
+    ".idea",
+    "big-negative-images",
+    ".ipynb_checkpoints",
+    "dataset",
+    "example-images",
+    "models",
+    "original-negatives*",
+    "original-positives*",
+    "printed-arrow",
+    "raw-images*",
+    "raw-videos*",
+    "unused-negative-images",
+]
+
+[tool.ruff.lint]
+select = ["F", "E", "W"]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+force-single-line = true
+force-sort-within-sections = true
+lines-after-imports = 2
+
+[tool.ruff.lint.pycodestyle]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+ignore-fully-untyped = false
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-branches = 12
+max-locals = 15
+max-statements = 50
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+preview = false
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "detectarrow"
+show_error_codes = true
+namespace_packages = false
+
+ignore_missing_imports = true
+follow_imports = "silent"
+
+no_implicit_optional = false
+strict_optional = true
+
+incremental = false
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+warn_return_any = false
+
+check_untyped_defs = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+disallow_any_expr = false
+disallow_subclassing_any = true
+disallow_any_decorated = true
+disallow_any_explicit = false
+
+allow_redefinition = true
+strict_equality = true
+
+
+
+

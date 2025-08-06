@@ -2,7 +2,6 @@
 
 from processing.preparation import Preparation
 
-
 if __name__ == '__main__':
     preparator = Preparation()
     preparator.extract_raw_pos_imgs_from_videos()

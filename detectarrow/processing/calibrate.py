@@ -17,17 +17,17 @@ from conf.imgs import TERM_CRITERIA
 
 class Calibrator:
     def __init__(self) -> None:
-        self.obj_points = []
-        self.img_points = []
-        self.mtx = None
-        self.dist = None
-        self.r_vecs = None
-        self.t_vecs = None
+        self.obj_points: list[npt.NDArray[np.float32]] = []
+        self.img_points: list[npt.NDArray[np.floating]] = []
+        self.mtx: Opt[npt.NDArray[np.floating]] = None
+        self.dist: Opt[npt.NDArray[np.floating]] = None
+        self.r_vecs: Opt[npt.NDArray[np.floating]] = None
+        self.t_vecs: Opt[npt.NDArray[np.floating]] = None
         self.roi = None
-        self.new_camera_mtx = None
-        self.p_dist = None
-        self.width = None
-        self.height = None
+        self.new_camera_mtx: Opt[npt.NDArray[np.floating]] = None
+        self.p_dist: Opt[int] = None
+        self.width: Opt[int] = None
+        self.height: Opt[int] = None
 
     def read_printed_nbrs(self, fname: str = PRINTED_MEASUREMENT_FNAME) -> None:
         with open(fname, 'r') as file:
@@ -47,9 +47,13 @@ class Calibrator:
     ) -> bool:
         if p_dist is not None:
             self.p_dist = p_dist
+        elif self.p_dist is None:
+            raise ValueError('distance between points is missing')
 
         if size is not None:
             self.width, self.height = size
+        elif self.width is None or self.height is None:
+            raise ValueError('width and height must get a value')
 
         objp = np.zeros((self.height * self.width, 3), np.float32)
         objp[:, :2] = np.mgrid[0:self.width, 0:self.height].T.reshape(-1, 2)
@@ -60,12 +64,23 @@ class Calibrator:
         for fname in img_fnames:
             gray = cv2.imread(fname, cv2.IMREAD_GRAYSCALE)
 
-            # Find the chess board corners; size must be exact or ret will be false
-            ret, corners = cv2.findChessboardCorners(gray, (self.width, self.height), None)
+            # Find the chess board corners;
+            # size must be exact or ret will be false
+            ret, corners = cv2.findChessboardCorners(
+                gray,
+                (self.width, self.height),
+                None
+            )
 
             if ret:
                 self.obj_points.append(objp)
-                corners2 = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), TERM_CRITERIA)
+                corners2 = cv2.cornerSubPix(
+                    gray,
+                    corners,
+                    (11, 11),
+                    (-1, -1),
+                    TERM_CRITERIA
+                )
                 self.img_points.append(corners2)
             else:
                 print(f'no corners found for {fname}')
@@ -73,13 +88,20 @@ class Calibrator:
         if gray is None:
             return False
 
-        ret, self.mtx, self.dist, self.r_vecs, self.t_vecs = cv2.calibrateCamera(
+        (
+            ret,
+            self.mtx,
+            self.dist,
+            self.r_vecs,
+            self.t_vecs
+        ) = cv2.calibrateCamera(
             self.obj_points,
             self.img_points,
             gray.shape[::-1],
             None,
             None
         )
+
         if not ret:
             return False
 
@@ -88,10 +110,14 @@ class Calibrator:
             np.savetxt(str(PurePath(config_path, 'dist.txt')), self.dist)
         return True
 
-    def prepare_undistortion(self, alpha: int = 1, config_path: str = CAM_CONFIG_PATH) -> None:
+    def prepare_undistortion(
+        self,
+        alpha: int = 1,
+        config_path: str = CAM_CONFIG_PATH
+    ) -> None:
         if self.mtx is None or self.dist is None:
-            self.mtx = np.loadtxt(str(Purepath(config_path, 'mtx.txt')))
-            self.dist = np.loadtxt(str(Purepath(config_path, 'dist.txt')))
+            self.mtx = np.loadtxt(str(PurePath(config_path, 'mtx.txt')))
+            self.dist = np.loadtxt(str(PurePath(config_path, 'dist.txt')))
 
         self.new_camera_mtx, self.roi = cv2.getOptimalNewCameraMatrix(
             self.mtx,
@@ -100,9 +126,22 @@ class Calibrator:
             alpha,
             (self.width, self.height))
 
-    def undistort(self, img: npt.NDArray[np.uint8]) -> typing.Optional[npt.NDArray[np.uint8]]:
-        if self.mtx is not None and self.dist is not None and self.new_camera_mtx is not None:
-            return cv2.undistort(img, self.mtx, self.dist, None, self.new_camera_mtx)
+    def undistort(
+        self,
+        img: npt.NDArray[np.uint8]
+    ) -> Opt[npt.NDArray[np.uint8]]:
+        if (
+            self.mtx is not None
+            and self.dist is not None
+            and self.new_camera_mtx is not None
+        ):
+            return cv2.undistort(
+                img,
+                self.mtx,
+                self.dist,
+                None,
+                self.new_camera_mtx
+            )
         else:
             return None
 
@@ -123,7 +162,10 @@ class Calibrator:
                     self.mtx,
                     self.dist
                 )
-                error = cv2.norm(self.img_points[i], img_points2, cv2.NORM_L2) / len(img_points2)
+                error = (
+                    cv2.norm(self.img_points[i], img_points2, cv2.NORM_L2)
+                    / len(img_points2)
+                )
                 error_sum += error
 
             return error_sum / len(self.obj_points)

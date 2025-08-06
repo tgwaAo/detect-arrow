@@ -8,6 +8,10 @@ import traceback
 import numpy as np
 import cv2
 
+import numpy.typing as npt
+from typing import Optional as Opt
+from typing import Union
+
 from conf.paths import PRINTED_PATH
 from conf.paths import PRINTED_BNAME
 from conf.paths import CAM_CONFIG_PATH
@@ -19,9 +23,8 @@ from processing.utils import est_pose_in_img
 from processing.utils import sort_pt_biggest_dist_y
 from inout.video import VideoCapture
 
-
 if __name__ == '__main__':
-    cam_target = 0
+    cam_target: Union[str, int] = 0
     cam_height = 480
     cam_width = 640
     time_till_update = 1
@@ -35,7 +38,10 @@ if __name__ == '__main__':
             cam_target = cam_conf.get('cam_target', cam_target)
             cam_height = cam_conf.get('cam_height', cam_height)
             cam_width = cam_conf.get('cam_width', cam_width)
-            time_till_update = cam_conf.get('time_till_update', time_till_update)
+            time_till_update = cam_conf.get(
+                'time_till_update',
+                time_till_update
+            )
             y_location_text = cam_conf.get('y_location_text', y_location_text)
         except IOError as e:
             print(f'could not read file, because {str(e)}')
@@ -46,7 +52,11 @@ if __name__ == '__main__':
 
     printed_fname = str(pl.PurePath(PRINTED_PATH, PRINTED_BNAME))
     points_printed = np.loadtxt(printed_fname, dtype=int)
-    points_printed = sort_pt_biggest_dist_y(points_printed, False, points_printed)
+    points_printed = sort_pt_biggest_dist_y(
+        points_printed,
+        False,
+        points_printed
+    )
 
     mtx_fname = str(pl.PurePath(CAM_CONFIG_PATH, 'mtx.txt'))
     mtx = np.loadtxt(mtx_fname)
@@ -71,7 +81,12 @@ if __name__ == '__main__':
     else:
         drop_if_full = True
 
-    cap = VideoCapture(cam_target, cam_width, cam_height, drop_if_full=drop_if_full)
+    cap = VideoCapture(
+        cam_target,
+        cam_width,
+        cam_height,
+        drop_if_full=drop_if_full
+    )
     if not cap.is_opened():
         cap.release()
         exit(1)
@@ -105,12 +120,16 @@ if __name__ == '__main__':
                 if result is not None:
                     R, T, cnt, pred, hull_pts = result
                 else:
-                    R = T = cnt = pred = hull_pts = None
+                    R = T = cnt = pred = hull_pts = None  # type:ignore
 
             if R is not None:
                 text = (
                     f'R:{np.array2string(R, precision=3, floatmode='fixed')}; '
-                    f'T:{np.array2string(T, precision=3, floatmode='fixed')}; '
+                    f'T:{np.array2string(
+                        T,  # type: ignore
+                        precision=3,
+                        floatmode='fixed'
+                    )}; '
                     f'pred:{pred:.4f}'
                 )
             elif pred is not None:
@@ -137,14 +156,21 @@ if __name__ == '__main__':
                 for idx, pt in enumerate(hull_pts):
                     pt = pt.astype(int)
                     cv2.circle(img, pt, 2, color, -1)
-                    cv2.putText(img, str(idx), pt + (5, -5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color)
+                    cv2.putText(
+                        img,
+                        str(idx),
+                        pt + (5, -5),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        color
+                    )
 
             cv2.imshow('camera test', img)
             key = cv2.waitKey(20)
             if key in ABORT_VIDEO_KEYS:
                 break
 
-    except Exception as e:
+    except Exception:
         print(traceback.format_exc())
 
     cap.release()

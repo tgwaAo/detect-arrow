@@ -1,6 +1,4 @@
-from pathlib import PurePath
 import pathlib as pl
-import random
 from shutil import move
 from glob import glob
 import itertools
@@ -10,13 +8,13 @@ import cv2
 from keras import Sequential
 from keras import layers
 # noinspection PyUnresolvedReferences
-from keras.models import load_model
 # noinspection PyUnresolvedReferences
 from keras.preprocessing import image_dataset_from_directory
 
 import numpy.typing as npt
 from typing import Optional as Opt
 from typing import Union
+from collections.abc import Sequence
 
 from conf.paths import RAW_VIDS_PATH
 from conf.paths import RAW_IMGS_PATH
@@ -53,29 +51,27 @@ from .utils import handle_options
 from .utils import create_sub_path_with_nbr
 from .model_handler import ModelHandler
 
-type cnt_container = Union[
-    list[npt.NDArray[int]],
-    tuple[npt.NDArray[int]]
-]
+type CntContainer = Sequence[npt.NDArray[np.integer]]
 
 
 class Preparation:
     def __init__(self) -> None:
-        self.model = None
-        self.videos_path = None
-        self.ext_imgs_path = None
-        self.org_pos_path = None
-        self.org_pos_sub_path = None
-        self.org_neg_path = None
-        self.org_neg_sub_path = None
-        self.dataset_path = None
-        self.training_arrows_path = None
-        self.training_anything_path = None
-        self.path_idx = None
+        self.model: Opt[Sequential] = None
+        self.videos_path: Opt[str] = None
+        self.ext_imgs_path: Opt[str] = None
+        self.org_pos_path: Opt[str] = None
+        self.org_pos_sub_path: Opt[str] = None
+        self.org_neg_path: Opt[str] = None
+        self.org_neg_sub_path: Opt[str] = None
+        self.dataset_path: Opt[str] = None
+        self.training_arrows_path: Opt[str] = None
+        self.training_anything_path: Opt[str] = None
+        self.path_idx: Opt[int] = None
 
     def choose_costum_paths(self, single_choice: bool = True) -> None:
         result = choose_costum_path(RAW_VIDS_PATH, only_existing=True)
         self.videos_path, nbr = result
+
         if single_choice:
             self.path_idx = nbr
             self.ext_imgs_path = create_sub_path_with_nbr(RAW_IMGS_PATH, nbr)
@@ -85,36 +81,45 @@ class Preparation:
             self.org_neg_path = create_sub_path_with_nbr(ORIGINAL_NEG_PATH, nbr)
             path = pl.PurePath(self.org_neg_path)
             self.org_neg_sub_path = str(path / path.name)
-            self.dataset_path = DATASET_PATH  # choosing another path results in a more difficult training setup
+            # choosing another path results in a more difficult training setup
+            self.dataset_path = DATASET_PATH
 
         else:
             result = choose_costum_path(RAW_IMGS_PATH)
             self.ext_imgs_path, _ = result
-
             result = choose_costum_path(ORIGINAL_POS_PATH)
             self.org_pos_path, _ = result
             path = pl.PurePath(self.org_pos_path)
-            self.org_pos_sub_path = path / path.name
+            self.org_pos_sub_path = str(path / path.name)
 
             result = choose_costum_path(ORIGINAL_NEG_PATH)
             self.org_neg_path, _ = result
             path = pl.PurePath(self.org_neg_path)
-            self.org_neg_sub_path = path / path.name
+            self.org_neg_sub_path = str(path / path.name)
 
             result = choose_costum_path(DATASET_PATH)
             self.dataset_path, _ = result
 
-        self.training_arrows_path = str(pl.PurePath(self.dataset_path) / pl.PurePath(ARROWS_PATH).name)
-        self.training_anything_path = str(pl.PurePath(self.dataset_path) / pl.PurePath(ANYTHING_PATH).name)
+        self.training_arrows_path = str(
+            pl.PurePath(self.dataset_path)
+            / pl.PurePath(ARROWS_PATH).name
+        )
+        self.training_anything_path = str(
+            pl.PurePath(self.dataset_path)
+            / pl.PurePath(ANYTHING_PATH).name
+        )
 
     def check_contours_manually(
         self,
-        cnts: cnt_container,
+        cnts: CntContainer,
         gray_img: npt.ArrayLike,
         color: Colors,
         min_area_cnt: Opt[int] = None,
-    ) -> Opt[tuple[Opt[npt.NDArray[int]], list[npt.NDArray[int]]]]:
-        neg_cnts = []
+    ) -> Opt[tuple[
+        Opt[npt.NDArray[np.integer]],
+        list[npt.NDArray[np.integer]]
+    ]]:
+        neg_cnts: list[npt.NDArray[np.integer]] = []
         for num, cnt in enumerate(cnts):
             min_rect = cv2.minAreaRect(cnt)
             area = min_rect[1][0] * min_rect[1][1]
@@ -130,7 +135,12 @@ class Preparation:
             elif key == Keys.Q or key == Keys.ESC:
                 return None
             elif key == Keys.R:
-                return self.check_contours_manually(cnts, gray_img, color, min_area_cnt)
+                return self.check_contours_manually(
+                    cnts,
+                    gray_img,
+                    color,
+                    min_area_cnt
+                )
             elif key == Keys.N:
                 neg_cnts.append(cnt)
 
@@ -143,13 +153,17 @@ class Preparation:
             nth_frame: int = FRAMES_TILL_IMAGE_EXTRACTION,
             ext_imgs_path: Opt[str] = None
     ) -> None:
-        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_IMGS_PATH)
+        self.ext_imgs_path = handle_options(
+            ext_imgs_path,
+            self.ext_imgs_path,
+            RAW_IMGS_PATH
+        )
         pl.Path(self.ext_imgs_path).mkdir(exist_ok=True)
 
         cap = cv2.VideoCapture(video_fname)
         if not cap.isOpened():
             cap.release()
-            raise IOError(f'could not open {videos_fname}')
+            raise IOError(f'could not open {video_fname}')
 
         counter = 0
         try:
@@ -174,13 +188,25 @@ class Preparation:
             nth_frame: int = FRAMES_TILL_IMAGE_EXTRACTION,
             ext_imgs_path: Opt[str] = None
     ) -> None:
-        self.videos_path = handle_options(videos_path, self.videos_path, RAW_VIDS_PATH)
-        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_IMGS_PATH)
+        self.videos_path = handle_options(
+            videos_path,
+            self.videos_path,
+            RAW_VIDS_PATH
+        )
+        self.ext_imgs_path = handle_options(
+            ext_imgs_path,
+            self.ext_imgs_path,
+            RAW_IMGS_PATH
+        )
 
-        for fname in glob(str(PurePath(self.videos_path, '*'))):
-            self.extract_raw_pos_imgs_from_video(fname, nth_frame)
+        for fname in pl.Path(self.videos_path).glob('*'):
+            self.extract_raw_pos_imgs_from_video(str(fname), nth_frame)
 
-    def load_model_for_classification(self, model_bname: str = None, ignore_when_model_exists: bool = True) -> None:
+    def load_model_for_classification(
+            self,
+            model_bname: str = None,
+            ignore_when_model_exists: bool = True
+    ) -> None:
         if self.model is not None and ignore_when_model_exists:
             return
         model_handler = ModelHandler()
@@ -198,9 +224,21 @@ class Preparation:
         org_pos_sub_path: Opt[str] = None,
         org_neg_sub_path: Opt[str] = None
     ) -> None:
-        self.ext_imgs_path = handle_options(ext_imgs_path, self.ext_imgs_path, RAW_IMGS_PATH)
-        self.org_pos_sub_path = handle_options(org_pos_sub_path, self.org_pos_sub_path, ORIGINAL_POS_SUB_PATH)
-        self.org_neg_sub_path = handle_options(org_neg_sub_path, self.org_neg_sub_path, ORIGINAL_NEG_SUB_PATH)
+        self.ext_imgs_path = handle_options(
+            ext_imgs_path,
+            self.ext_imgs_path,
+            RAW_IMGS_PATH
+        )
+        self.org_pos_sub_path = handle_options(
+            org_pos_sub_path,
+            self.org_pos_sub_path,
+            ORIGINAL_POS_SUB_PATH
+        )
+        self.org_neg_sub_path = handle_options(
+            org_neg_sub_path,
+            self.org_neg_sub_path,
+            ORIGINAL_NEG_SUB_PATH
+        )
 
         pl.Path(self.org_pos_sub_path).mkdir(parents=True, exist_ok=True)
         pl.Path(self.org_neg_sub_path).mkdir(parents=True, exist_ok=True)
@@ -215,13 +253,26 @@ class Preparation:
             cnts = extract_cnts(blurred)
 
             if use_model and self.model is not None:
-                filtered_list, filtered_cnts, cnt_hull_pts_list, hull_rot_pts = filter_cnts(cnts, gray_img, expected_pts)
+                (
+                    filtered_list,
+                    filtered_cnts,
+                    cnt_hull_pts_list,
+                    hull_rot_pts
+                ) = filter_cnts(cnts, gray_img, expected_pts)
+
                 if not len(filtered_list):
-                    print(f'no candidate for prediction found in {img_filename}')
+                    print(
+                        f'no candidate for prediction found in {img_filename}'
+                    )
                     continue
 
                 prediction = self.model.predict(filtered_list).flatten()
-                pos_cnts, neg_cnts, _, _, _, _ = sort_cnts(prediction, filtered_cnts, cnt_hull_pts_list, hull_rot_pts)
+                pos_cnts, neg_cnts, _, _, _, _ = sort_cnts(
+                    prediction,
+                    filtered_cnts,
+                    cnt_hull_pts_list,
+                    hull_rot_pts
+                )
             else:
                 pos_cnts = []
                 neg_cnts = cnts
@@ -234,12 +285,18 @@ class Preparation:
             key = cv2.waitKey(0) & 0xFF
 
             if key == Keys.N:
-                pos_cnt, neg_cnts = self.check_contours_manually(
+                result = self.check_contours_manually(
                     cnts,
                     gray_img,
                     Colors.PURPLE,
-                    min_area_cnt,
+                    min_area_cnt
                 )
+
+                if result is None:
+                    raise ValueError('no output from manual check')
+
+                pos_cnt, neg_cnts = result
+
                 if pos_cnt is not None:
                     small_img = extract_img_from_cnt(gray_img, pos_cnt)
                     save_img(self.org_pos_sub_path, small_img)
@@ -281,8 +338,16 @@ class Preparation:
         roughly_created_size: int = ROUGHLY_NBR_OF_FILES_PER_CLASS,
         batch_size: int = 1_000,
     ) -> None:
-        self.org_pos_path = handle_options(org_pos_path, self.org_pos_path, ORIGINAL_POS_PATH)
-        self.training_arrows_path = handle_options(training_arrows_path, self.training_arrows_path, ARROWS_PATH)
+        self.org_pos_path = handle_options(
+            org_pos_path,
+            self.org_pos_path,
+            ORIGINAL_POS_PATH
+        )
+        self.training_arrows_path = handle_options(
+            training_arrows_path,
+            self.training_arrows_path,
+            ARROWS_PATH
+        )
         pl.Path(self.training_arrows_path).mkdir(parents=True, exist_ok=True)
         self.aug_imgs_and_build_dataset(
             self.org_pos_path,
@@ -298,8 +363,16 @@ class Preparation:
             roughly_created_size: int = ROUGHLY_NBR_OF_FILES_PER_CLASS,
             batch_size: int = 1_000
     ) -> None:
-        self.org_neg_path = handle_options(org_neg_path, self.org_neg_path, ORIGINAL_NEG_PATH)
-        self.training_anything_path = handle_options(training_anything_path, self.training_anything_path, ANYTHING_PATH)
+        self.org_neg_path = handle_options(
+            org_neg_path,
+            self.org_neg_path,
+            ORIGINAL_NEG_PATH
+        )
+        self.training_anything_path = handle_options(
+            training_anything_path,
+            self.training_anything_path,
+            ANYTHING_PATH
+        )
         pl.Path(self.training_anything_path).mkdir(parents=True, exist_ok=True)
         self.aug_imgs_and_build_dataset(
             self.org_neg_path,
@@ -312,12 +385,15 @@ class Preparation:
         self,
         source_path: str,
         target_path: str,
-        roughly_created_size,
-        batch_size
+        roughly_created_size: int,
+        batch_size: int
     ) -> None:
         sub_paths = list(pl.Path(source_path).glob('*'))
         if len(sub_paths) != 1:
-            raise ValueError(f'only one sub path should exist, found {sub_paths} in {source_path}')
+            raise ValueError(
+                f'only one sub path should exist,'
+                f' found {sub_paths} in {source_path}'
+            )
 
         path = pl.Path(sub_paths[0])
         nbr_files = len(list(path.glob('*.jpg')))
@@ -342,13 +418,19 @@ class Preparation:
             for _ in range(nbr_augs_same_img):
                 aug_imgs = aug_net(images_per_iter).numpy()
                 for img in aug_imgs:
-                    filename = str(PurePath(
+                    formated_nbr = str(num).rjust(digits_in_fname, '0')
+                    time_str = get_current_time_string()
+                    bname =  f'img_{formated_nbr}_{time_str}.jpg'
+                    filename = str(pl.PurePath(
                         target_path,
-                        f'img_{str(num).rjust(digits_in_fname, '0')}_{get_current_time_string()}.jpg'
+                        bname
                     ))
                     retval = cv2.imwrite(filename, img)
                     if not retval:
-                        raise ValueError(f'retval {retval} saving augmented image: {filename}')
+                        raise ValueError(
+                            f'retval {retval}'
+                            f' saving augmented image: {filename}'
+                        )
                     num += 1
 
         print(f'number of created images: {num}')
@@ -375,8 +457,14 @@ class Preparation:
             if num % 10 == 0:
                 print(f'at least {num} raw images finished', end='\r')
 
-    def move_part_of_unused_to_neg_dataset(self, nbr_imgs: int = ROUGHLY_NBR_OF_FILES_PER_CLASS) -> None:
+    def move_part_of_unused_to_neg_dataset(
+        self,
+        nbr_imgs: int = ROUGHLY_NBR_OF_FILES_PER_CLASS
+    ) -> None:
         pl.Path(ANYTHING_PATH).mkdir(parents=True, exist_ok=True)
-        used_neg_filenames = itertools.islice(pl.Path(UNUSED_NEG_PATH).glob('*.jpg'), nbr_imgs)
+        used_neg_filenames = itertools.islice(
+            pl.Path(UNUSED_NEG_PATH).glob('*.jpg'),
+            nbr_imgs
+        )
         for file in used_neg_filenames:
-            move(file, PurePath(ANYTHING_PATH, file.name))
+            move(file, pl.PurePath(ANYTHING_PATH, file.name))
