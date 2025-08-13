@@ -207,7 +207,7 @@ def extract_feature_pts(
     pos_cnt: npt.NDArray[np.integer],
     factors: list[float] = [0.01, 0.015, 0.002, 0.0095, 0.009],
     nbr_expected_pts: int = None
-) -> list[npt.NDArray[np.floating]]:
+) -> Opt[list[npt.NDArray[np.floating]]]:
     retval = cv2.arcLength(pos_cnt, True)
     for factor in factors:
         hull_pts: npt.NDArray[np.integer] = cv2.approxPolyDP(
@@ -224,7 +224,7 @@ def extract_feature_pts(
         elif nbr_expected_pts is None:
             return merged_hull_pts
 
-    raise ValueError('could not extract hull points -> factors empty?')
+    return None
 
 
 def merge_points(
@@ -322,6 +322,11 @@ def rotate_and_crop(
 
     if cnt is not None:
         hull_pts = extract_feature_pts(cnt, nbr_expected_pts=nbr_expected_pts)
+
+        if hull_pts is None:
+            rot_pts = None
+            return cropped_rot_img, hull_pts, rot_pts
+
         hull_pts_ = np.array(hull_pts) - min_area_rect[0]
         rot_pts = np.zeros((len(hull_pts_), 2), dtype=float)
 
@@ -369,7 +374,7 @@ def sort_cnts(
             element for idx, element in enumerate(cnts) if idx in pos_idxs
         ]
         pos_preds = [
-            element[0]
+            element
             for idx, element in enumerate(preds)
             if idx in pos_idxs
         ]
@@ -391,7 +396,7 @@ def sort_cnts(
 
     if len(pos_idxs) < len(preds):
         neg_cnts = [
-            element[0].numpy()
+            element
             for idx, element in enumerate(cnts)
             if idx not in pos_idxs
         ]

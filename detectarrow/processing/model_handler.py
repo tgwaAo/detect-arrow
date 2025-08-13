@@ -234,6 +234,8 @@ class ModelHandler:
     def tensorflow_import_hack(self) -> None:
         if find_spec('tensorflow.keras') is None:
             import sys
+            import keras
+            import keras.backend  # noqa: F401
             sys.modules['tensorflow.keras'] = sys.modules['keras']
             sys.modules['tensorflow.keras.backend'] = sys.modules[
                 'keras.backend'
