@@ -5,7 +5,6 @@ import json
 import cv2
 import numpy as np
 
-import typing
 import numpy.typing as npt
 from typing import Optional as Opt
 

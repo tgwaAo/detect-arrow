@@ -8,8 +8,6 @@ from typing import Optional as Opt
 from typing import Union
 from typing import TypeVar
 from keras.models import Sequential
-from tensorflow.python.framework.ops import EagerTensor
-import tensorflow as tf
 from collections.abc import Sequence
 
 from conf.imgs import MIN_WIDTH_TO_HEIGHT
@@ -149,7 +147,7 @@ def filter_and_extract_img_from_cnt(
         MIN_WIDTH_TO_HEIGHT < width_to_height < MAX_WIDTH_TO_HEIGHT
         or not w_h_filter
     ):
-        return extract_img_from_cnt(gray_img, min_rect)
+        return extract_img_from_cnt(gray_img, min_rect=min_rect)
     return None
 
 
@@ -164,10 +162,14 @@ def save_img(path: str, gray_img: npt.NDArray[np.integer]) -> None:
 
 def extract_img_from_cnt(
     gray_img: npt.NDArray[np.integer],
-    shape: npt.NDArray[np.integer] | tuple[tuple[float], tuple[float], float]
+    cnt: npt.NDArray[np.integer] = None,
+    min_rect: tuple[tuple[float, float], tuple[float, float], float] = None
 ) -> npt.NDArray[np.integer]:
-    if not isinstance(shape, tuple):
-        min_rect = cv2.minAreaRect(shape)
+    if min_rect is None:
+        if cnt is None:
+            raise ValueError('cnt or shape should be given')
+        else:
+            min_rect = cv2.minAreaRect(cnt)
     cropped_img, _, _ = rotate_and_crop(gray_img, min_rect)
     small_img = cv2.resize(cropped_img, TARGET_SIZE)
     return small_img
@@ -348,7 +350,7 @@ def get_rotation(min_area_angle: float, width_to_height: float) -> float:
 
 
 def sort_cnts(
-    preds: EagerTensor,
+    preds: npt.NDArray[np.floating],
     cnts: CntContainer,
     cnt_hull_pts_list: npt.NDArray[np.floating],
     hull_rot_pts: npt.NDArray[np.floating]
@@ -360,24 +362,26 @@ def sort_cnts(
     Opt[list[npt.NDArray[np.floating]]],
     Opt[list[npt.NDArray[np.floating]]]
 ]:
-    idxs = np.where(preds >= 0.5)[0]
+    pos_idxs = np.where(preds >= 0.5)[0]
 
-    if len(idxs):
+    if len(pos_idxs):
         pos_cnts = [
-            element for idx, element in enumerate(cnts) if idx in idxs
+            element for idx, element in enumerate(cnts) if idx in pos_idxs
         ]
         pos_preds = [
-            element[0].numpy()
+            element[0]
             for idx, element in enumerate(preds)
-            if idx in idxs
+            if idx in pos_idxs
         ]
         pos_cnt_hull_pts_list = [
             element
             for idx, element in enumerate(cnt_hull_pts_list)
-            if idx in idxs
+            if idx in pos_idxs
         ]
         pos_hull_rot_pts = [
-            element for idx, element in enumerate(hull_rot_pts) if idx in idxs
+            element
+            for idx, element in enumerate(hull_rot_pts)
+            if idx in pos_idxs
         ]
     else:
         pos_cnts = None
@@ -385,14 +389,14 @@ def sort_cnts(
         pos_hull_rot_pts = None
         pos_preds = None
 
-    if len(idxs) < len(preds):
+    if len(pos_idxs) < len(preds):
         neg_cnts = [
             element[0].numpy()
             for idx, element in enumerate(cnts)
-            if idx not in idxs
+            if idx not in pos_idxs
         ]
         neg_preds = [
-            element for idx, element in enumerate(preds) if idx not in idxs
+            element for idx, element in enumerate(preds) if idx not in pos_idxs
         ]
     else:
         neg_cnts = None
@@ -632,7 +636,7 @@ def est_cnts_in_img(
             print('no candidate for prediction found')
         return None
 
-    prediction = model(filtered_images)
+    prediction = model(filtered_images).numpy().flatten()
 
     # noinspection PyTypeChecker
     return sort_cnts(
@@ -649,7 +653,11 @@ def est_pose_of_cnt(
     hull_rot_pts: npt.NDArray[np.floating],
     mtx: npt.NDArray[np.floating],
     verbose: bool = False
-) -> Opt[tuple[npt.NDArray[np.floating], npt.NDArray[np.floating], npt.NDArray[np.floating]]]:
+) -> Opt[tuple[
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating],
+    npt.NDArray[np.floating]
+]]:
     if len(cnt_hull_pts) != ARROW_CONTOUR_POINTS:
         if verbose:
             print(

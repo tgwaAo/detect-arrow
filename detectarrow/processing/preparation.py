@@ -1,6 +1,5 @@
 import pathlib as pl
 from shutil import move
-from glob import glob
 import itertools
 
 import numpy as np
@@ -13,7 +12,6 @@ from keras.preprocessing import image_dataset_from_directory
 
 import numpy.typing as npt
 from typing import Optional as Opt
-from typing import Union
 from collections.abc import Sequence
 
 from conf.paths import RAW_VIDS_PATH
@@ -199,7 +197,7 @@ class Preparation:
             RAW_IMGS_PATH
         )
 
-        for fname in pl.Path(self.videos_path).glob('*'):
+        for fname in pl.Path(self.videos_path).glob('*.webm'):
             self.extract_raw_pos_imgs_from_video(str(fname), nth_frame)
 
     def load_model_for_classification(
@@ -298,17 +296,23 @@ class Preparation:
                 pos_cnt, neg_cnts = result
 
                 if pos_cnt is not None:
-                    small_img = extract_img_from_cnt(gray_img, pos_cnt)
+                    small_img = extract_img_from_cnt(gray_img, cnt = pos_cnt)
                     save_img(self.org_pos_sub_path, small_img)
 
                 if neg_cnts is not None:
                     for neg_cnt in neg_cnts:
-                        small_img = extract_img_from_cnt(gray_img, neg_cnt)
+                        small_img = extract_img_from_cnt(
+                            gray_img,
+                            cnt = neg_cnt
+                        )
                         save_img(self.org_neg_sub_path, small_img)
 
             elif key == Keys.Y:
                 if len(pos_cnts) == 1:
-                    small_img = extract_img_from_cnt(gray_img, pos_cnts[0])
+                    small_img = extract_img_from_cnt(
+                        gray_img,
+                        cnt = pos_cnts[0]
+                    )
                     save_img(self.org_pos_sub_path, small_img)
 
                 else:

@@ -203,8 +203,8 @@ class ModelHandler:
                 break
 
         if self.model is not None and test_image is not None:
-            prediction = self.model.predict(test_image[None])
-            print(f'prediction:{prediction[0][0]:.2f}')
+            prediction = self.model.predict(test_image[None]).flatten()
+            print(f'prediction:{prediction[0]:.2f}')
             print(f'real:{test_label}')
             plt.imshow(test_image, cmap='gray')
             plt.show()

@@ -8,8 +8,6 @@ import traceback
 import numpy as np
 import cv2
 
-import numpy.typing as npt
-from typing import Optional as Opt
 from typing import Union
 
 from conf.paths import PRINTED_PATH
