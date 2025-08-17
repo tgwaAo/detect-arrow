@@ -1,5 +1,13 @@
 Lib;CVE;Note;Solution
 tensorflow@2.17.0;CVE-2021-35958;do not use tf.keras.utils.get_file;ignored
-pip@24.2;CVE-2018-20225;it has been reported that this is intended functionality and the user is responsible for using --extra-index-url securely;ignored
-parso@0.8.4;CVE-2019-12760;uses pickle files when cache is enabled and that is fine;ignored
-joblib@1.4.2;CVE-2024-34997;false positive;ignored
+joblib@1.5.1;CVE-2024-34997;For joblib.load there is a note stating it should never be used to load files from untrusted sources;only load self created files
+keras@3.6.0;CVE-2024-55459;This is not a vulnerability. get_file is a download command, like wget + untar.;ignored
+keras@3.6.0;CVE-2025-1550;solved on github;only load self created files / wait for update
+keras@3.6.0;CVE-2025-8747;30 July 2025 — Keras 3.11.0 released with fixes / no 3.11 available via conda;only load self created files / wait for update
+parso@0.8.4;CVE-2019-12760 ;"NOTE: This is disputed because ""the cache directory is not under control of the attacker in any common configuration.";ignored
+pip@25.1;CVE-2018-20225;NOTE: it has been reported that this is intended functionality and the user is responsible for using --extra-index-url securely;ignored
+protobuf@5.27.5;CVE-2025-4565;recommend upgrading to version =>6.31.1 or beyond commit 17838beda2943d08b8a9d4df5b68f5f04f26d901;only load self created files / wait for update
+python-json-logger@3.2.1;CVE-2025-27607;"If the package was claimed, it would allow them RCE on any Python JSON Logger user 
+who installed the development dependencies on Python 3.13 (e.g. pip install python-json-logger[dev]). 
+This issue has been resolved with 3.3.0.";"using Python 12 without dev dependencies /
+wait for update"
