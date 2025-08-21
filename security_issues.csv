@@ -1,5 +1,5 @@
 Lib;CVE;Note;Solution
-tensorflow@2.17.0;CVE-2021-35958;do not use tf.keras.utils.get_file;ignored
+tensorflow@2.17.0;CVE-2021-35958;do not use tf.keras.utils.get_file / bug https://github.com/tensorflow/tensorflow/issues/82372;Ignored / bug ignored 
 joblib@1.5.1;CVE-2024-34997;For joblib.load there is a note stating it should never be used to load files from untrusted sources;only load self created files
 keras@3.6.0;CVE-2024-55459;This is not a vulnerability. get_file is a download command, like wget + untar.;ignored
 keras@3.6.0;CVE-2025-1550;solved on github;only load self created files / wait for update
